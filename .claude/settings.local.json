@@ -4,7 +4,8 @@
       "PowerShell($root = \"c:\\\\Users\\\\PrintOffice\\\\Desktop\\\\bizflow\"; Get-ChildItem -Path $root -Recurse -Directory -Exclude node_modules | ForEach-Object {$_.FullName.Replace\\($root, \"\"\\)} | Sort-Object)",
       "PowerShell(New-Item -ItemType Directory -Path \"c:\\\\Users\\\\PrintOffice\\\\Desktop\\\\bizflow\\\\views\\\\ecommerce\" -Force)",
       "PowerShell(\"done\")",
-      "PowerShell(Start-Sleep -Seconds 1; $r = Invoke-WebRequest -Uri \"http://localhost:3000/ecommerce\" -MaximumRedirection 0 -ErrorAction SilentlyContinue; \"Status: $\\($r.StatusCode\\)\")"
+      "PowerShell(Start-Sleep -Seconds 1; $r = Invoke-WebRequest -Uri \"http://localhost:3000/ecommerce\" -MaximumRedirection 0 -ErrorAction SilentlyContinue; \"Status: $\\($r.StatusCode\\)\")",
+      "Bash(git push *)"
     ]
   }
 }
