@@ -1,4 +1,3 @@
-require('ejs');
 require('dotenv').config()
 const express = require('express')
 const cookieSession = require('cookie-session')
@@ -6,12 +5,23 @@ const flash = require('connect-flash')
 const methodOverride = require('method-override')
 const path = require('path')
 
+// 1. นำเข้า ejs แบบตรงๆ เพื่อบังคับให้ Bundler เอาแพ็กเกจนี้ขึ้นไปด้วย
+const ejs = require('ejs')
+
 const app = express()
 const PORT = process.env.PORT || 3000
 
-// View engine
+// --- ส่วนที่แก้ไขสำคัญสำหรับ Netlify Serverless ---
+
+// 2. สำคัญมาก: ตั้งค่า Proxy เพื่อให้ Cookie แบบ Secure ทำงานได้บน Netlify
+app.set('trust proxy', 1)
+
+// 3. บังคับให้ Express ใช้ ejs ตัวที่เรา require มา (แก้ปัญหา Cannot find module 'ejs' ได้ 100%)
+app.engine('ejs', ejs.__express)
 app.set('view engine', 'ejs')
 app.set('views', path.join(__dirname, 'views'))
+
+// ---------------------------------------------
 
 // Static files (served by Netlify CDN in production, Express in dev)
 app.use(express.static(path.join(__dirname, 'public')))
@@ -45,7 +55,7 @@ app.use(flash())
 // Global locals
 app.use((req, res, next) => {
   res.locals.appName    = process.env.APP_NAME    || 'BizFlow'
-  res.locals.companyName = process.env.COMPANY_NAME || 'บริษัทของคุณ'
+  res.locals.companyName = process.env.COMPANY_NAME || 'STDESIGN CO., LTD.'
   res.locals.user       = req.session.user || null
   next()
 })

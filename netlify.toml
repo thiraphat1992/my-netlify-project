@@ -8,9 +8,10 @@
   port    = 3000
 
 [functions]
-  node_bundler = "esbuild"
-  external_node_modules = ["ejs"]
-  included_files = ["views/**"]
+  # เปลี่ยนจาก esbuild เป็น zisi เพื่อแก้ปัญหาโมดูลหาย
+  node_bundler = "zisi" 
+  # ดักเผื่อไว้ทั้ง 2 กรณีว่าโฟลเดอร์ views อยู่ข้างนอก หรืออยู่ในโฟลเดอร์ src
+  included_files = ["views/**", "src/views/**"]
 
 [[redirects]]
   from   = "/*"
