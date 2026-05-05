@@ -9,6 +9,7 @@
 
 [functions]
   node_bundler = "zisi"
+  external_node_modules = ["ejs"]
 
 [[redirects]]
   from   = "/*"
