@@ -48,18 +48,10 @@ async function verifyLineToken(accessToken) {
 }
 
 // ─── Sync: LINE Shopping ใช้ Partner API (ต้องสมัครแยก) ─────────────────────
-// ร้านค้าทั่วไปใช้ Webhook + Manual entry แทน
 async function syncLineShoppingOrders(store) {
   if (!store.access_token) return { synced: 0, error: 'ไม่มี Access Token' }
-
-  // ตรวจสอบ token ก่อน
   const verify = await verifyLineToken(store.access_token)
   if (!verify.ok) return { synced: 0, error: verify.error }
-
-  // LINE Shopping Partner API — ต้องสมัครเป็น Partner กับ LINE ก่อน
-  // https://developers.line.biz/en/docs/line-shopping/
-  // ร้านค้าทั่วไปไม่สามารถเข้าถึง API นี้ได้โดยตรง
-  // ทางเลือก: ใช้ Webhook รับออเดอร์อัตโนมัติ หรือ import CSV
   return {
     synced: 0,
     error: 'LINE Shopping Merchant API ต้องสมัครเป็น LINE Partner ก่อน — แนะนำให้ใช้ Webhook หรือ Import CSV แทน'
@@ -249,74 +241,85 @@ router.post('/chat/:chatId/reply', requireAuth, async (req, res) => {
 
 // ─── LINE Messaging webhook ───────────────────────────────────────────────────
 router.post('/webhook/:storeId', async (req, res) => {
-  // ตอบ 200 ก่อนเสมอ (LINE ต้องการ response ภายใน 15 วินาที)
-  res.sendStatus(200)
+  try {
+    const { storeId } = req.params
+    const signature = req.headers['x-line-signature']
 
-  const { storeId } = req.params
-  const signature = req.headers['x-line-signature']
-
-  // โหลด store config
-  const { data: store } = await supabase.from('ecommerce_stores')
-    .select('id, channel_secret, access_token').eq('id', storeId).single()
-  if (!store) return
-
-  // ตรวจสอบ signature (ป้องกัน request ปลอม)
-  if (store.channel_secret && req.rawBody) {
-    if (!verifyLineSignature(store.channel_secret, req.rawBody, signature)) {
-      console.warn('[LINE Webhook] Invalid signature for store', storeId)
-      return
+    // ใช้ supabaseAdmin ดึงข้อมูลร้านค้าเพื่อลดปัญหาการบล็อกจาก RLS
+    const { data: store } = await supabaseAdmin.from('ecommerce_stores')
+      .select('id, channel_secret, access_token').eq('id', storeId).maybeSingle()
+    
+    if (!store) {
+      return res.status(404).send('Store not found')
     }
-  }
 
-  const events = req.body?.events || []
-  for (const ev of events) {
-    const userId = ev.source?.userId
-    if (!userId) continue
-
-    // ดึง/สร้าง chat record
-    const chat = await getOrCreateChat(storeId, userId, store.access_token)
-    if (!chat) continue
-
-    if (ev.type === 'message') {
-      const msgText = ev.message?.type === 'text' ? ev.message.text : null
-      const mediaUrl = ['image','video','audio','file'].includes(ev.message?.type)
-        ? `line://message/${ev.message.id}` : null
-
-      // บันทึกข้อความ
-      await supabaseAdmin.from('ecommerce_chat_messages').insert([{
-        chat_id: chat.id,
-        sender_type: 'customer',
-        message: msgText || `[${ev.message?.type || 'unknown'}]`,
-        message_type: ev.message?.type || 'text',
-        media_url: mediaUrl,
-        sent_at: new Date(ev.timestamp)
-      }])
-
-      // อัปเดต last_message
-      await supabaseAdmin.from('ecommerce_chats').update({
-        last_message: msgText || `[${ev.message?.type}]`,
-        last_message_at: new Date(ev.timestamp),
-        unread_count: (chat.unread_count || 0) + 1
-      }).eq('id', chat.id)
-
-    } else if (ev.type === 'follow') {
-      // ลูกค้า follow LINE OA
-      await supabaseAdmin.from('ecommerce_chats').update({
-        status: 'open', last_message: '👋 ลูกค้า Follow ร้านค้า',
-        last_message_at: new Date(ev.timestamp)
-      }).eq('id', chat.id)
-
-    } else if (ev.type === 'unfollow') {
-      // ลูกค้า unfollow
-      await supabaseAdmin.from('ecommerce_chats').update({ status: 'closed' }).eq('id', chat.id)
+    // ตรวจสอบ signature (ป้องกัน request ปลอม)
+    if (store.channel_secret && req.rawBody) {
+      if (!verifyLineSignature(store.channel_secret, req.rawBody, signature)) {
+        console.warn('[LINE Webhook] Invalid signature for store', storeId)
+        return res.status(401).send('Invalid signature')
+      }
     }
+
+    const events = req.body?.events || []
+    for (const ev of events) {
+      const userId = ev.source?.userId
+      if (!userId) continue
+
+      // ดึง/สร้าง chat record
+      const chat = await getOrCreateChat(storeId, userId, store.access_token)
+      if (!chat) continue
+
+      if (ev.type === 'message') {
+        const msgText = ev.message?.type === 'text' ? ev.message.text : null
+        const mediaUrl = ['image','video','audio','file'].includes(ev.message?.type)
+          ? `line://message/${ev.message.id}` : null
+
+        // บันทึกข้อความ
+        await supabaseAdmin.from('ecommerce_chat_messages').insert([{
+          chat_id: chat.id,
+          sender_type: 'customer',
+          message: msgText || `[${ev.message?.type || 'unknown'}]`,
+          message_type: ev.message?.type || 'text',
+          media_url: mediaUrl,
+          sent_at: new Date(ev.timestamp)
+        }])
+
+        // อัปเดต last_message
+        await supabaseAdmin.from('ecommerce_chats').update({
+          last_message: msgText || `[${ev.message?.type}]`,
+          last_message_at: new Date(ev.timestamp),
+          unread_count: (chat.unread_count || 0) + 1
+        }).eq('id', chat.id)
+
+      } else if (ev.type === 'follow') {
+        // ลูกค้า follow LINE OA
+        await supabaseAdmin.from('ecommerce_chats').update({
+          status: 'open', last_message: '👋 ลูกค้า Follow ร้านค้า',
+          last_message_at: new Date(ev.timestamp)
+        }).eq('id', chat.id)
+
+      } else if (ev.type === 'unfollow') {
+        // ลูกค้า unfollow
+        await supabaseAdmin.from('ecommerce_chats').update({ status: 'closed' }).eq('id', chat.id)
+      }
+    }
+
+    // ย้ายการตอบกลับ 200 มาไว้ *ล่างสุด*
+    // เพื่อให้ Netlify Function รอให้ Database ทำงานเสร็จก่อนค่อยปิดสวิตช์ตัวเอง
+    res.sendStatus(200)
+
+  } catch (err) {
+    console.error('[LINE Webhook Error]', err)
+    res.sendStatus(500)
   }
 })
 
 // ดึงหรือสร้าง chat + ดึงชื่อลูกค้าจาก LINE Profile API
 async function getOrCreateChat(storeId, userId, accessToken) {
-  const { data: existing } = await supabase.from('ecommerce_chats')
-    .select('*').eq('platform_chat_id', userId).eq('store_id', storeId).single()
+  // แก้เป็น maybeSingle() เพื่อไม่ให้เกิด Error ถ้าระบบค้นหาข้อมูลแล้วเจอเป็นค่าว่าง 
+  const { data: existing } = await supabaseAdmin.from('ecommerce_chats')
+    .select('*').eq('platform_chat_id', userId).eq('store_id', storeId).maybeSingle()
   if (existing) return existing
 
   // ดึงโปรไฟล์ลูกค้าจาก LINE
