@@ -25,26 +25,100 @@
 .order-card-right { display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
 .order-total { font-family:'Plus Jakarta Sans',sans-serif; font-size:15px; font-weight:800; color:var(--text); }
 
-/* Chat */
-.chat-list { display:flex; flex-direction:column; gap:2px; }
-.chat-item { display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:var(--radius-sm);
-  cursor:pointer; transition:background 0.15s; }
+/* ─── Chat Split Layout ─── */
+.chat-container {
+  display:grid; grid-template-columns:300px 1fr;
+  height:calc(100vh - 260px); min-height:520px;
+  border:1px solid var(--border); border-radius:var(--radius-lg);
+  overflow:hidden; background:var(--surface); box-shadow:var(--shadow-sm);
+}
+.chat-sidebar {
+  border-right:1px solid var(--border); display:flex; flex-direction:column;
+  background:var(--surface);
+}
+.chat-sidebar-header {
+  padding:14px 14px 10px; border-bottom:1px solid var(--border); flex-shrink:0;
+}
+.chat-sidebar-title { font-family:'Plus Jakarta Sans',sans-serif; font-size:14px; font-weight:700; color:var(--text); margin-bottom:8px; }
+.chat-search-input {
+  width:100%; padding:7px 12px; border:1.5px solid var(--border);
+  border-radius:var(--radius-full); font-size:13px; outline:none; font-family:inherit;
+}
+.chat-search-input:focus { border-color:var(--primary); }
+.chat-list { flex:1; overflow-y:auto; padding:6px; }
+.chat-item {
+  display:flex; align-items:center; gap:10px; padding:10px 10px;
+  border-radius:var(--radius-sm); cursor:pointer; transition:background 0.12s; margin-bottom:2px;
+}
 .chat-item:hover { background:var(--surface-2); }
 .chat-item.active { background:var(--primary-dim); }
-.chat-avatar { width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg,var(--primary),var(--violet));
-  display:flex; align-items:center; justify-content:center; font-size:16px; color:#fff; font-weight:700; flex-shrink:0; }
+.chat-avatar {
+  width:40px; height:40px; border-radius:50%;
+  background:linear-gradient(135deg,var(--primary),var(--violet));
+  display:flex; align-items:center; justify-content:center;
+  font-size:16px; color:#fff; font-weight:700; flex-shrink:0;
+}
 .chat-info { flex:1; min-width:0; }
-.chat-name { font-size:13.5px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.chat-preview { font-size:12px; color:var(--text-4); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px; }
-.chat-time { font-size:11px; color:var(--text-4); }
-.chat-unread { min-width:18px; height:18px; background:var(--danger); border-radius:100px;
-  color:#fff; font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; padding:0 4px; }
+.chat-name { font-size:13px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.chat-preview { font-size:11.5px; color:var(--text-4); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px; }
+.chat-time { font-size:10.5px; color:var(--text-4); white-space:nowrap; }
+.chat-unread {
+  min-width:17px; height:17px; background:var(--danger); border-radius:100px;
+  color:#fff; font-size:9.5px; font-weight:700;
+  display:flex; align-items:center; justify-content:center; padding:0 4px;
+}
 
-/* Slide panel */
+/* ─── Chat Main Window ─── */
+.chat-main { display:flex; flex-direction:column; background:#f7f8fc; }
+.chat-empty-state {
+  flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  color:var(--text-4); gap:10px;
+}
+.chat-empty-state .ei { font-size:44px; }
+.chat-window { display:none; flex-direction:column; height:100%; }
+.chat-window.active { display:flex; }
+.chat-window-header {
+  padding:12px 16px; background:var(--surface); border-bottom:1px solid var(--border);
+  display:flex; align-items:center; gap:10px; flex-shrink:0;
+}
+.chat-window-title { font-size:14px; font-weight:700; color:var(--text); }
+.chat-window-sub { font-size:11.5px; color:var(--text-4); }
+.chat-window-acts { margin-left:auto; display:flex; gap:6px; }
+.chat-messages-area { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:6px; }
+.msg-row { display:flex; flex-direction:column; }
+.msg-row.me { align-items:flex-end; }
+.msg-row.them { align-items:flex-start; }
+.msg-bubble {
+  max-width:72%; padding:9px 13px; border-radius:18px;
+  font-size:13.5px; line-height:1.55; word-break:break-word;
+}
+.msg-bubble.me { background:linear-gradient(135deg,var(--primary-dark),var(--violet)); color:#fff; border-bottom-right-radius:4px; }
+.msg-bubble.them { background:var(--surface); color:var(--text); border-bottom-left-radius:4px; box-shadow:var(--shadow-xs); }
+.msg-image { max-width:200px; max-height:200px; border-radius:12px; cursor:zoom-in; object-fit:cover; }
+.msg-time { font-size:10.5px; color:var(--text-4); margin-top:3px; }
+.chat-input-area {
+  padding:10px 12px; background:var(--surface); border-top:1px solid var(--border); flex-shrink:0;
+}
+.chat-tool-bar { display:flex; gap:6px; margin-bottom:8px; }
+.chat-tool-btn {
+  padding:5px 12px; border:1.5px solid var(--border); border-radius:var(--radius-full);
+  background:var(--surface); font-size:12px; font-weight:600; cursor:pointer;
+  color:var(--text-3); transition:all 0.15s; display:flex; align-items:center; gap:4px;
+}
+.chat-tool-btn:hover { border-color:var(--primary); color:var(--primary); background:var(--primary-dim); }
+.chat-input-row { display:flex; gap:8px; align-items:flex-end; }
+.chat-text-input {
+  flex:1; padding:9px 14px; border:1.5px solid var(--border); border-radius:var(--radius-full);
+  font-family:inherit; font-size:13.5px; outline:none; resize:none; max-height:100px;
+  transition:border-color 0.2s;
+}
+.chat-text-input:focus { border-color:var(--primary); }
+.chat-send-btn { padding:9px 20px; border-radius:var(--radius-full); flex-shrink:0; }
+
+/* ─── Order Slide Panel ─── */
 .slide-panel { position:fixed; top:0; right:0; width:480px; max-width:95vw; height:100vh;
   background:var(--surface); box-shadow:-8px 0 32px rgba(0,0,0,0.12); z-index:200;
-  transform:translateX(100%); transition:transform 0.3s cubic-bezier(.4,0,.2,1);
-  display:flex; flex-direction:column; }
+  transform:translateX(100%); transition:transform 0.3s cubic-bezier(.4,0,.2,1); display:flex; flex-direction:column; }
 .slide-panel.open { transform:translateX(0); }
 .slide-panel-header { padding:18px 22px; border-bottom:1px solid var(--border);
   display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
@@ -54,12 +128,11 @@
   display:none; backdrop-filter:blur(2px); }
 .panel-overlay.open { display:block; }
 
-/* Chat window */
-.chat-messages { display:flex; flex-direction:column; gap:8px; padding:16px; min-height:200px; }
-.msg-bubble { max-width:75%; padding:9px 13px; border-radius:16px; font-size:13.5px; line-height:1.5; }
-.msg-customer { background:var(--surface-2); color:var(--text); border-bottom-left-radius:4px; align-self:flex-start; }
-.msg-merchant { background:linear-gradient(135deg,var(--primary-dark),var(--violet)); color:#fff; border-bottom-right-radius:4px; align-self:flex-end; }
-.msg-time { font-size:10.5px; color:var(--text-4); margin-top:2px; }
+@media(max-width:800px){
+  .chat-container { grid-template-columns:1fr; }
+  .chat-sidebar { display:none; }
+  .chat-sidebar.mobile-show { display:flex; position:absolute; z-index:10; width:100%; height:100%; }
+}
 
 /* Label printed badge */
 .label-ok { display:inline-flex; align-items:center; gap:4px; font-size:11px; color:var(--success); }
@@ -231,26 +304,42 @@
 
 <!-- ═══════════════ TAB: CHAT ═══════════════ -->
 <div id="tab-chat" class="tab-pane" style="display:<%= activeTab==='chat'?'block':'none' %>">
-  <% if (chats.length === 0) { %>
-  <div class="card">
-    <div class="empty-state">
-      <div class="empty-icon">💬</div>
-      <div class="empty-title">ยังไม่มีแชท</div>
-      <div class="empty-desc">เชื่อมต่อ LINE OA และตั้งค่า Webhook เพื่อรับแชท</div>
+
+  <!-- Top bar: Broadcast -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <div style="font-size:13px;color:var(--text-3);"><%= chats.length %> การสนทนา</div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-secondary btn-sm" onclick="openModal('broadcastModal')">📢 Broadcast</button>
     </div>
   </div>
-  <% } else { %>
-  <div class="card">
-    <div class="card-body" style="padding:8px;">
-      <div class="chat-list">
+
+  <div class="chat-container">
+    <!-- ─── Left: Customer list ─── -->
+    <div class="chat-sidebar">
+      <div class="chat-sidebar-header">
+        <div class="chat-sidebar-title">💬 รายชื่อลูกค้า</div>
+        <input type="text" class="chat-search-input" placeholder="🔍 ค้นหาชื่อลูกค้า..."
+          oninput="filterChatList(this.value)">
+      </div>
+      <div class="chat-list" id="chatList">
+        <% if (chats.length === 0) { %>
+        <div style="padding:30px;text-align:center;color:var(--text-4);font-size:13px;">
+          ยังไม่มีแชท<br>เชื่อมต่อ LINE OA และตั้งค่า Webhook
+        </div>
+        <% } %>
         <% chats.forEach(chat => { %>
-        <div class="chat-item" onclick="openChatPanel('<%= chat.id %>', '<%= (chat.customer_name||'ลูกค้า').replace(/'/g,"\\'") %>')">
+        <div class="chat-item"
+          id="ci-<%= chat.id %>"
+          data-name="<%= chat.customer_name || 'ลูกค้า' %>"
+          data-id="<%= chat.id %>"
+          data-avatar="<%= (chat.customer_name||'?')[0].toUpperCase() %>"
+          onclick="selectChat(this)">
           <div class="chat-avatar"><%= (chat.customer_name||'?')[0].toUpperCase() %></div>
           <div class="chat-info">
             <div class="chat-name"><%= chat.customer_name || 'ลูกค้า' %></div>
             <div class="chat-preview"><%= chat.last_message || '...' %></div>
           </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
             <div class="chat-time"><%= chat.last_message_at ? new Date(chat.last_message_at).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}) : '' %></div>
             <% if (chat.unread_count > 0) { %><div class="chat-unread"><%= chat.unread_count %></div><% } %>
           </div>
@@ -258,8 +347,60 @@
         <% }) %>
       </div>
     </div>
+
+    <!-- ─── Right: Chat window ─── -->
+    <div class="chat-main">
+      <!-- Empty state -->
+      <div class="chat-empty-state" id="chatEmptyState">
+        <div class="ei">💬</div>
+        <div style="font-size:15px;font-weight:600;color:var(--text-3);">เลือกลูกค้าเพื่อแชท</div>
+        <div style="font-size:13px;">คลิกชื่อลูกค้าด้านซ้ายเพื่อเปิดการสนทนา</div>
+      </div>
+
+      <!-- Active chat window -->
+      <div class="chat-window" id="chatWindow">
+        <!-- Header -->
+        <div class="chat-window-header">
+          <div class="chat-avatar" id="cwAvatar" style="width:36px;height:36px;font-size:14px;">?</div>
+          <div>
+            <div class="chat-window-title" id="cwName">ลูกค้า</div>
+            <div class="chat-window-sub">LINE OA</div>
+          </div>
+          <div class="chat-window-acts">
+            <button class="chat-tool-btn" onclick="openCreateOrderForChat()" title="สร้างออเดอร์จากแชทนี้">📋 สร้างบิล</button>
+            <button class="chat-tool-btn" onclick="openQRModal()" title="สร้าง QR PromptPay รับเงิน">💳 QR รับเงิน</button>
+          </div>
+        </div>
+
+        <!-- Messages -->
+        <div class="chat-messages-area" id="cwMessages">
+          <div style="text-align:center;color:var(--text-4);font-size:13px;padding:20px;">กำลังโหลด...</div>
+        </div>
+
+        <!-- Toolbar + Input -->
+        <div class="chat-input-area">
+          <div class="chat-tool-bar">
+            <label class="chat-tool-btn" style="cursor:pointer;" title="แนบรูปภาพ">
+              🖼️ แนบรูป
+              <input type="file" accept="image/*" style="display:none;" onchange="handleImageUpload(this)">
+            </label>
+          </div>
+          <div class="chat-input-row">
+            <textarea class="chat-text-input" id="cwInput" rows="1"
+              placeholder="พิมพ์ข้อความ..."
+              onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMessage()}"
+              oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
+            <button class="btn btn-primary chat-send-btn" onclick="sendChatMessage()">ส่ง</button>
+          </div>
+          <!-- Image preview -->
+          <div id="imgPreviewWrap" style="display:none;margin-top:8px;position:relative;width:fit-content;">
+            <img id="imgPreview" style="max-width:120px;max-height:120px;border-radius:8px;border:1px solid var(--border);">
+            <button onclick="clearImage()" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:none;background:var(--danger);color:#fff;font-size:12px;cursor:pointer;line-height:1;">×</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
-  <% } %>
 </div>
 
 <!-- ═══════════════ TAB: SETTINGS ═══════════════ -->
@@ -479,17 +620,72 @@
   <div class="slide-panel-footer" id="panelFooter"></div>
 </div>
 
-<!-- ═══════ Slide panel: Chat ═══════ -->
-<div class="slide-panel" id="chatPanel" style="width:520px;">
-  <div class="slide-panel-header">
-    <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;font-weight:700;" id="chatPanelTitle">แชท</div>
-    <button class="modal-close" onclick="closeChatPanel()">×</button>
+<!-- ═══════ Modal: Broadcast ═══════ -->
+<div class="modal-overlay" id="broadcastModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title">📢 Broadcast ข้อความ</div>
+      <button class="modal-close" onclick="closeModal('broadcastModal')">×</button>
+    </div>
+    <form action="/ecommerce/broadcast" method="POST">
+      <div class="modal-body">
+        <div style="padding:10px 14px;background:var(--warning-dim);border-radius:var(--radius-sm);font-size:12.5px;color:#92400e;margin-bottom:16px;">
+          ⚠️ ข้อความจะถูกส่งถึง <strong>ทุกคนที่ Follow LINE OA</strong> ของร้านค้า
+        </div>
+        <% if (stores.length > 1) { %>
+        <div class="form-group">
+          <label class="form-label">ส่งจากร้านค้า</label>
+          <select name="store_id" class="form-control">
+            <% stores.filter(s=>s.access_token).forEach(s => { %>
+            <option value="<%= s.id %>"><%= s.store_name %></option>
+            <% }) %>
+          </select>
+        </div>
+        <% } else if (stores.length === 1) { %>
+        <input type="hidden" name="store_id" value="<%= stores[0].id %>">
+        <% } %>
+        <div class="form-group">
+          <label class="form-label">ข้อความ</label>
+          <textarea name="message" class="form-control" rows="4" placeholder="พิมพ์ข้อความที่ต้องการ broadcast..." required></textarea>
+          <div class="form-hint">ข้อความจะส่งถึงทุก follower ของ LINE OA ทันที</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">แนบรูปภาพ (ถ้ามี)</label>
+          <input type="url" name="image_url" class="form-control" placeholder="https://... URL รูปภาพ (HTTPS เท่านั้น)">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('broadcastModal')">ยกเลิก</button>
+        <button type="submit" class="btn btn-primary" onclick="return confirm('ยืนยันส่ง Broadcast ถึงทุก Follower?')">📢 ส่ง Broadcast</button>
+      </div>
+    </form>
   </div>
-  <div class="slide-panel-body" id="chatMessages" style="padding:0;"></div>
-  <div class="slide-panel-footer">
-    <div style="display:flex;gap:8px;" id="chatReplyBox">
-      <input type="text" class="form-control" id="chatReplyInput" placeholder="พิมพ์ข้อความ..." onkeydown="if(event.key==='Enter')sendReply()">
-      <button class="btn btn-primary" onclick="sendReply()">ส่ง</button>
+</div>
+
+<!-- ═══════ Modal: QR Payment ═══════ -->
+<div class="modal-overlay" id="qrModal">
+  <div class="modal-box" style="max-width:400px;">
+    <div class="modal-header">
+      <div class="modal-title">💳 QR PromptPay รับเงิน</div>
+      <button class="modal-close" onclick="closeModal('qrModal')">×</button>
+    </div>
+    <div class="modal-body" style="text-align:center;">
+      <div class="form-row form-row-2" style="text-align:left;margin-bottom:16px;">
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">เบอร์โทร / เลขบัตรประชาชน / Tax ID</label>
+          <input type="text" id="qrPromptPayId" class="form-control" placeholder="0XX-XXX-XXXX" oninput="renderQR()">
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">จำนวนเงิน (บาท)</label>
+          <input type="number" id="qrAmount" class="form-control" placeholder="0.00" step="0.01" min="0" oninput="renderQR()">
+        </div>
+      </div>
+      <div id="qrCanvas" style="display:flex;justify-content:center;margin:10px 0 16px;"></div>
+      <div id="qrStatus" style="font-size:12.5px;color:var(--text-4);">กรอกเบอร์โทร/Tax ID เพื่อสร้าง QR</div>
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;">
+        <button class="btn btn-secondary btn-sm" onclick="downloadQR()">⬇️ ดาวน์โหลด</button>
+        <button class="btn btn-primary btn-sm" onclick="sendQRToChat()">📤 ส่งใน Chat</button>
+      </div>
     </div>
   </div>
 </div>
@@ -733,45 +929,194 @@ async function openOrderPanel(id) {
     </div>`
 }
 
+// ─── Chat: Split Layout ───────────────────────────────────────────────────────
+let activeChatId = null
+let pendingImageFile = null
+
+function selectChat(el) {
+  const id   = el.dataset.id
+  const name = el.dataset.name
+  const av   = el.dataset.avatar
+  activeChatId = id
+
+  document.querySelectorAll('.chat-item').forEach(c => c.classList.remove('active'))
+  el.classList.add('active')
+  document.getElementById('chatEmptyState').style.display = 'none'
+  document.getElementById('chatWindow').classList.add('active')
+  document.getElementById('cwName').textContent = name
+  document.getElementById('cwAvatar').textContent = av
+
+  loadChatMessages()
+  document.getElementById('cwInput').focus()
+}
+
+async function loadChatMessages() {
+  if (!activeChatId) return
+  const msgs = await fetch('/ecommerce/api/chat/' + activeChatId + '/messages').then(r => r.json())
+  const area = document.getElementById('cwMessages')
+  if (!msgs.length) {
+    area.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-4);font-size:13px;">ยังไม่มีข้อความ</div>'
+    return
+  }
+  area.innerHTML = msgs.map(m => {
+    const isMe = m.sender_type === 'merchant'
+    const time  = new Date(m.sent_at).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})
+    let content
+    if (m.message_type === 'image' && m.media_url) {
+      content = `<img src="${escHtml(m.media_url)}" class="msg-image" onclick="window.open('${escHtml(m.media_url)}','_blank')" alt="รูปภาพ">`
+    } else {
+      content = `<div class="msg-bubble ${isMe?'me':'them'}">${escHtml(m.message||'')}</div>`
+    }
+    return `<div class="msg-row ${isMe?'me':'them'}">${content}<div class="msg-time">${time}</div></div>`
+  }).join('')
+  area.scrollTop = area.scrollHeight
+}
+
+async function sendChatMessage() {
+  const input = document.getElementById('cwInput')
+  const msg   = input.value.trim()
+  if (!activeChatId) return
+
+  // ส่งรูปถ้ามี
+  if (pendingImageFile) {
+    await sendImage()
+    if (!msg) return
+  }
+
+  if (!msg) return
+  input.value = ''
+  input.style.height = 'auto'
+
+  // Optimistic UI
+  const area = document.getElementById('cwMessages')
+  const row  = document.createElement('div')
+  row.className = 'msg-row me'
+  row.innerHTML = `<div class="msg-bubble me">${escHtml(msg)}</div><div class="msg-time">เมื่อกี้</div>`
+  area.appendChild(row)
+  area.scrollTop = area.scrollHeight
+
+  const r = await fetch('/ecommerce/chat/' + activeChatId + '/reply', {
+    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ message: msg })
+  })
+  if (!r.ok) { row.style.opacity = '0.5'; row.title = 'ส่งไม่สำเร็จ' }
+}
+
+// ─── Image upload ─────────────────────────────────────────────────────────────
+function handleImageUpload(input) {
+  const file = input.files[0]
+  if (!file) return
+  pendingImageFile = file
+  const reader = new FileReader()
+  reader.onload = e => {
+    document.getElementById('imgPreview').src  = e.target.result
+    document.getElementById('imgPreviewWrap').style.display = 'block'
+  }
+  reader.readAsDataURL(file)
+}
+function clearImage() {
+  pendingImageFile = null
+  document.getElementById('imgPreviewWrap').style.display = 'none'
+  document.getElementById('imgPreview').src = ''
+}
+async function sendImage() {
+  if (!pendingImageFile || !activeChatId) return
+  const fd = new FormData()
+  fd.append('image', pendingImageFile)
+  clearImage()
+  const r = await fetch('/ecommerce/chat/' + activeChatId + '/upload', { method:'POST', body:fd })
+  const j = await r.json()
+  if (j.ok) { await loadChatMessages() }
+  else { alert('ส่งรูปไม่สำเร็จ: ' + j.error) }
+}
+
+// ─── Filter chat list ─────────────────────────────────────────────────────────
+function filterChatList(q) {
+  const lower = q.toLowerCase()
+  document.querySelectorAll('#chatList .chat-item').forEach(el => {
+    el.style.display = el.dataset.name.toLowerCase().includes(lower) ? '' : 'none'
+  })
+}
+
+// ─── สร้างบิลจากแชท ───────────────────────────────────────────────────────────
+function openCreateOrderForChat() {
+  const name = document.getElementById('cwName').textContent
+  openModal('addOrderModal')
+  setTimeout(() => {
+    const f = document.querySelector('[name="customer_name"]')
+    if (f) f.value = name
+  }, 50)
+}
+
+// ─── QR PromptPay ─────────────────────────────────────────────────────────────
+let qrInstance = null
+function openQRModal() { openModal('qrModal'); renderQR() }
+
+function generatePromptPayPayload(raw, amount) {
+  const cleaned = raw.replace(/\D/g,'')
+  let id
+  if (cleaned.length >= 10 && cleaned.startsWith('0')) {
+    id = '0066' + cleaned.slice(1)
+  } else {
+    id = cleaned
+  }
+  const f = (tag, v) => tag + v.length.toString().padStart(2,'0') + v
+  const ma = f('00','A000000677010111') + f('01', id)
+  let data = f('00','01') + f('01','12') + f('29', ma) + f('53','764') +
+    (parseFloat(amount) > 0 ? f('54', parseFloat(amount).toFixed(2)) : '') +
+    f('58','TH') + f('59','N/A') + f('60','Bangkok') + '6304'
+  let crc = 0xFFFF
+  for (let i = 0; i < data.length; i++) {
+    crc ^= data.charCodeAt(i) << 8
+    for (let j = 0; j < 8; j++) crc = (crc & 0x8000) ? ((crc<<1)^0x1021)&0xFFFF : (crc<<1)&0xFFFF
+  }
+  return data + crc.toString(16).toUpperCase().padStart(4,'0')
+}
+
+function renderQR() {
+  const id  = (document.getElementById('qrPromptPayId').value || '').trim()
+  const amt = document.getElementById('qrAmount').value || 0
+  const wrap = document.getElementById('qrCanvas')
+  const status = document.getElementById('qrStatus')
+  if (!id) { wrap.innerHTML=''; status.textContent='กรอกเบอร์โทร/Tax ID เพื่อสร้าง QR'; return }
+  try {
+    const payload = generatePromptPayPayload(id, amt)
+    wrap.innerHTML = ''
+    if (window.QRCode) {
+      new QRCode(wrap, { text: payload, width:200, height:200, correctLevel:QRCode.CorrectLevel.M })
+      status.textContent = `PromptPay: ${id} ${parseFloat(amt)>0?'฿'+parseFloat(amt).toLocaleString('th-TH',{minimumFractionDigits:2}):''}`
+    } else {
+      status.textContent = 'กำลังโหลด QR library...'
+    }
+  } catch(e) { status.textContent = 'ข้อมูลไม่ถูกต้อง' }
+}
+
+function downloadQR() {
+  const canvas = document.querySelector('#qrCanvas canvas')
+  if (!canvas) { alert('สร้าง QR ก่อน'); return }
+  const a = document.createElement('a')
+  a.download = 'promptpay-qr.png'
+  a.href = canvas.toDataURL()
+  a.click()
+}
+
+async function sendQRToChat() {
+  if (!activeChatId) { alert('เลือกแชทก่อน แล้วค่อยส่ง QR'); closeModal('qrModal'); return }
+  const canvas = document.querySelector('#qrCanvas canvas')
+  if (!canvas) { alert('สร้าง QR ก่อน'); return }
+  canvas.toBlob(async blob => {
+    const fd = new FormData()
+    fd.append('image', blob, 'qr-payment.png')
+    const r = await fetch('/ecommerce/chat/' + activeChatId + '/upload', { method:'POST', body:fd })
+    const j = await r.json()
+    closeModal('qrModal')
+    if (j.ok) { await loadChatMessages(); alert('ส่ง QR ไปยังลูกค้าแล้ว') }
+    else { alert('ส่งไม่สำเร็จ: ' + j.error) }
+  })
+}
+
 function closePanel() {
   document.getElementById('panelOverlay').classList.remove('open')
   document.getElementById('orderPanel').classList.remove('open')
-  document.getElementById('chatPanel').classList.remove('open')
-}
-
-// Chat panel
-let currentChatId = null
-async function openChatPanel(id, name) {
-  currentChatId = id
-  document.getElementById('panelOverlay').classList.add('open')
-  document.getElementById('chatPanel').classList.add('open')
-  document.getElementById('chatPanelTitle').textContent = '💬 ' + name
-
-  const msgs = await fetch('/ecommerce/api/chat/' + id + '/messages').then(r => r.json())
-  const msgsHtml = msgs.length === 0
-    ? '<div style="text-align:center;padding:30px;color:var(--text-4);">ยังไม่มีข้อความ</div>'
-    : '<div class="chat-messages">' + msgs.map(m => `
-      <div style="display:flex;flex-direction:column;align-items:${m.sender_type==='merchant'?'flex-end':'flex-start'};">
-        <div class="msg-bubble msg-${m.sender_type}">${escHtml(m.message || '')}</div>
-        <div class="msg-time">${new Date(m.sent_at).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}</div>
-      </div>`).join('') + '</div>'
-  document.getElementById('chatMessages').innerHTML = msgsHtml
-  document.getElementById('chatMessages').scrollTop = 99999
-}
-function closeChatPanel() {
-  document.getElementById('panelOverlay').classList.remove('open')
-  document.getElementById('chatPanel').classList.remove('open')
-}
-
-async function sendReply() {
-  const input = document.getElementById('chatReplyInput')
-  const msg = input.value.trim()
-  if (!msg || !currentChatId) return
-  input.value = ''
-  await fetch('/ecommerce/chat/' + currentChatId + '/reply', {
-    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ message: msg })
-  })
-  openChatPanel(currentChatId, document.getElementById('chatPanelTitle').textContent.replace('💬 ', ''))
 }
 
 // Edit store modal
@@ -862,5 +1207,7 @@ if (urlP.get('tab') && urlP.get('tab') !== 'orders') {
   if (btn) { document.querySelectorAll('.tab-pane').forEach(p=>p.style.display='none'); document.getElementById('tab-'+urlP.get('tab')).style.display='block'; btn.classList.add('active'); }
 }
 </script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <%- include('../partials/footer') %>
