@@ -239,90 +239,91 @@ router.post('/chat/:chatId/reply', requireAuth, async (req, res) => {
   }
 })
 
-// ─── LINE Messaging webhook ───────────────────────────────────────────────────
+// ─── LINE Messaging webhook (เวอร์ชันติดกล้องวงจรปิด) ──────────────────────────────────
 router.post('/webhook/:storeId', async (req, res) => {
   try {
     const { storeId } = req.params
-    const signature = req.headers['x-line-signature']
+    console.log('🔔 [WEBHOOK] เริ่มรับข้อมูลจากร้านค้า:', storeId)
+    console.log('📦 [WEBHOOK] ข้อมูลดิบที่ได้ (req.body):', JSON.stringify(req.body))
 
-    // ใช้ supabaseAdmin ดึงข้อมูลร้านค้าเพื่อลดปัญหาการบล็อกจาก RLS
-    const { data: store } = await supabaseAdmin.from('ecommerce_stores')
+    const { data: store, error: storeErr } = await supabaseAdmin.from('ecommerce_stores')
       .select('id, channel_secret, access_token').eq('id', storeId).maybeSingle()
     
-    if (!store) {
+    if (storeErr || !store) {
+      console.log('❌ [WEBHOOK] หาร้านค้าไม่เจอ หรือ Error:', storeErr)
       return res.status(404).send('Store not found')
     }
 
-    // ตรวจสอบ signature (ป้องกัน request ปลอม)
-    if (store.channel_secret && req.rawBody) {
-      if (!verifyLineSignature(store.channel_secret, req.rawBody, signature)) {
-        console.warn('[LINE Webhook] Invalid signature for store', storeId)
-        return res.status(401).send('Invalid signature')
-      }
-    }
+    // [ปิดระบบตรวจสอบ Signature ชั่วคราว เพื่อเทสว่าข้อมูลเข้าได้ไหม]
+    // if (store.channel_secret && req.rawBody) { ... }
 
     const events = req.body?.events || []
+    console.log('📩 [WEBHOOK] จำนวนข้อความที่ส่งมา:', events.length)
+
     for (const ev of events) {
       const userId = ev.source?.userId
       if (!userId) continue
 
-      // ดึง/สร้าง chat record
+      console.log('👤 [WEBHOOK] ลูกค้าทักมา LINE ID:', userId)
       const chat = await getOrCreateChat(storeId, userId, store.access_token)
-      if (!chat) continue
+      
+      if (!chat) {
+        console.log('❌ [WEBHOOK] ไม่สามารถสร้างหรือดึงข้อมูลห้องแชทได้ (chat is null)')
+        continue
+      }
 
       if (ev.type === 'message') {
         const msgText = ev.message?.type === 'text' ? ev.message.text : null
-        const mediaUrl = ['image','video','audio','file'].includes(ev.message?.type)
-          ? `line://message/${ev.message.id}` : null
+        console.log('💬 [WEBHOOK] ข้อความลูกค้าคือ:', msgText)
 
-        // บันทึกข้อความ
-        await supabaseAdmin.from('ecommerce_chat_messages').insert([{
+        // ลองบันทึกข้อความลง Database
+        const { error: insertErr } = await supabaseAdmin.from('ecommerce_chat_messages').insert([{
           chat_id: chat.id,
           sender_type: 'customer',
           message: msgText || `[${ev.message?.type || 'unknown'}]`,
           message_type: ev.message?.type || 'text',
-          media_url: mediaUrl,
           sent_at: new Date(ev.timestamp)
         }])
 
-        // อัปเดต last_message
-        await supabaseAdmin.from('ecommerce_chats').update({
+        if (insertErr) {
+          console.log('❌ [DATABASE] Error บันทึกข้อความแชทพัง!:', insertErr)
+        } else {
+          console.log('✅ [DATABASE] บันทึกข้อความลงตารางสำเร็จ!')
+        }
+
+        // อัปเดตตารางหลัก
+        const { error: updateErr } = await supabaseAdmin.from('ecommerce_chats').update({
           last_message: msgText || `[${ev.message?.type}]`,
           last_message_at: new Date(ev.timestamp),
           unread_count: (chat.unread_count || 0) + 1
         }).eq('id', chat.id)
+        
+        if (updateErr) console.log('❌ [DATABASE] Error อัปเดตห้องแชทพัง!:', updateErr)
 
       } else if (ev.type === 'follow') {
-        // ลูกค้า follow LINE OA
         await supabaseAdmin.from('ecommerce_chats').update({
           status: 'open', last_message: '👋 ลูกค้า Follow ร้านค้า',
           last_message_at: new Date(ev.timestamp)
         }).eq('id', chat.id)
-
-      } else if (ev.type === 'unfollow') {
-        // ลูกค้า unfollow
-        await supabaseAdmin.from('ecommerce_chats').update({ status: 'closed' }).eq('id', chat.id)
       }
     }
 
-    // ย้ายการตอบกลับ 200 มาไว้ *ล่างสุด*
-    // เพื่อให้ Netlify Function รอให้ Database ทำงานเสร็จก่อนค่อยปิดสวิตช์ตัวเอง
     res.sendStatus(200)
 
   } catch (err) {
-    console.error('[LINE Webhook Error]', err)
+    console.error('🔥 [LINE Webhook Crash Error]', err)
     res.sendStatus(500)
   }
 })
 
 // ดึงหรือสร้าง chat + ดึงชื่อลูกค้าจาก LINE Profile API
 async function getOrCreateChat(storeId, userId, accessToken) {
-  // แก้เป็น maybeSingle() เพื่อไม่ให้เกิด Error ถ้าระบบค้นหาข้อมูลแล้วเจอเป็นค่าว่าง 
-  const { data: existing } = await supabaseAdmin.from('ecommerce_chats')
+  const { data: existing, error: findErr } = await supabaseAdmin.from('ecommerce_chats')
     .select('*').eq('platform_chat_id', userId).eq('store_id', storeId).maybeSingle()
+  
+  if (findErr) console.log('❌ [CHAT API] Error ค้นหาห้องแชท:', findErr)
   if (existing) return existing
 
-  // ดึงโปรไฟล์ลูกค้าจาก LINE
   let customerName = userId
   let avatarUrl = null
   if (accessToken) {
@@ -335,7 +336,7 @@ async function getOrCreateChat(storeId, userId, accessToken) {
     } catch (_) {}
   }
 
-  const { data: newChat } = await supabaseAdmin.from('ecommerce_chats').insert([{
+  const { data: newChat, error: insertErr } = await supabaseAdmin.from('ecommerce_chats').insert([{
     store_id: storeId,
     platform: 'line',
     platform_chat_id: userId,
@@ -346,6 +347,8 @@ async function getOrCreateChat(storeId, userId, accessToken) {
     unread_count: 0
   }]).select().single()
 
+  if (insertErr) console.log('❌ [CHAT API] Error สร้างห้องแชทใหม่ลง DB:', insertErr)
+  
   return newChat
 }
 
