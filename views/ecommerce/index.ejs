@@ -69,13 +69,13 @@
 }
 
 /* ─── Chat Main Window ─── */
-.chat-main { display:flex; flex-direction:column; background:#f7f8fc; }
+.chat-main { display:flex; flex-direction:column; background:#f7f8fc; overflow:hidden; min-height:0; }
 .chat-empty-state {
   flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
   color:var(--text-4); gap:10px;
 }
 .chat-empty-state .ei { font-size:44px; }
-.chat-window { display:none; flex-direction:column; height:100%; }
+.chat-window { display:none; flex-direction:column; height:100%; min-height:0; overflow:hidden; }
 .chat-window.active { display:flex; }
 .chat-window-header {
   padding:12px 16px; background:var(--surface); border-bottom:1px solid var(--border);
@@ -84,7 +84,7 @@
 .chat-window-title { font-size:14px; font-weight:700; color:var(--text); }
 .chat-window-sub { font-size:11.5px; color:var(--text-4); }
 .chat-window-acts { margin-left:auto; display:flex; gap:6px; }
-.chat-messages-area { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:6px; }
+.chat-messages-area { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:6px; min-height:0; }
 .msg-row { display:flex; flex-direction:column; }
 .msg-row.me { align-items:flex-end; }
 .msg-row.them { align-items:flex-start; }
@@ -680,9 +680,22 @@
           <input type="number" id="qrAmount" class="form-control" placeholder="0.00" step="0.01" min="0" oninput="renderQR()">
         </div>
       </div>
-      <div id="qrCanvas" style="display:flex;justify-content:center;margin:10px 0 16px;"></div>
+      <div id="qrCanvas" style="display:flex;justify-content:center;margin:10px 0 10px;"></div>
       <div id="qrStatus" style="font-size:12.5px;color:var(--text-4);">กรอกเบอร์โทร/Tax ID เพื่อสร้าง QR</div>
-      <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;">
+
+      <!-- ข้อความอัตโนมัติ -->
+      <div style="text-align:left;margin-top:14px;border-top:1px solid var(--border);padding-top:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <label style="font-size:12.5px;font-weight:600;color:var(--text-2);">💬 ข้อความส่งพร้อม QR</label>
+          <button type="button" class="btn btn-secondary btn-xs" onclick="saveQRTemplate()">💾 บันทึก</button>
+        </div>
+        <textarea id="qrAutoMsg" class="form-control" rows="3"
+          style="font-size:13px;resize:vertical;"
+          placeholder="เช่น: กรุณาโอน {amount} บาท&#10;บัญชี: ชื่อร้าน&#10;ขอบคุณที่ใช้บริการ 🙏"></textarea>
+        <div style="font-size:11.5px;color:var(--text-4);margin-top:4px;">ใช้ <code>{amount}</code> แทนจำนวนเงิน — กด บันทึก เพื่อจำไว้ใช้ครั้งต่อไป</div>
+      </div>
+
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:14px;">
         <button class="btn btn-secondary btn-sm" onclick="downloadQR()">⬇️ ดาวน์โหลด</button>
         <button class="btn btn-primary btn-sm" onclick="sendQRToChat()">📤 ส่งใน Chat</button>
       </div>
@@ -1048,8 +1061,16 @@ function openCreateOrderForChat() {
 }
 
 // ─── QR PromptPay ─────────────────────────────────────────────────────────────
+const QR_DEFAULT_TEMPLATE = 'กรุณาโอน {amount} บาท\nขอบคุณที่ใช้บริการนะคะ 🙏'
 let qrInstance = null
-function openQRModal() { openModal('qrModal'); renderQR() }
+function openQRModal() {
+  openModal('qrModal')
+  const ta = document.getElementById('qrAutoMsg')
+  if (!ta.value) {
+    ta.value = localStorage.getItem('bizflow_qr_template') || QR_DEFAULT_TEMPLATE
+  }
+  renderQR()
+}
 
 function generatePromptPayPayload(raw, amount) {
   const cleaned = raw.replace(/\D/g,'')
@@ -1099,18 +1120,45 @@ function downloadQR() {
   a.click()
 }
 
+function saveQRTemplate() {
+  const msg = document.getElementById('qrAutoMsg').value
+  localStorage.setItem('bizflow_qr_template', msg)
+  const btn = event.target
+  btn.textContent = '✓ บันทึกแล้ว'
+  setTimeout(() => { btn.textContent = '💾 บันทึก' }, 1800)
+}
+
 async function sendQRToChat() {
   if (!activeChatId) { alert('เลือกแชทก่อน แล้วค่อยส่ง QR'); closeModal('qrModal'); return }
   const canvas = document.querySelector('#qrCanvas canvas')
   if (!canvas) { alert('สร้าง QR ก่อน'); return }
+
+  const amt    = parseFloat(document.getElementById('qrAmount').value) || 0
+  const rawMsg = (document.getElementById('qrAutoMsg').value || '').trim()
+  const autoMsg = rawMsg
+    ? rawMsg.replace(/\{amount\}/gi, amt > 0 ? amt.toLocaleString('th-TH', { minimumFractionDigits: 2 }) : '')
+    : ''
+
   canvas.toBlob(async blob => {
+    // ส่ง QR image ก่อน
     const fd = new FormData()
     fd.append('image', blob, 'qr-payment.png')
-    const r = await fetch('/ecommerce/chat/' + activeChatId + '/upload', { method:'POST', body:fd })
+    const r = await fetch('/ecommerce/chat/' + activeChatId + '/upload', { method: 'POST', body: fd })
     const j = await r.json()
+
+    if (!j.ok) { alert('ส่งไม่สำเร็จ: ' + j.error); return }
+
+    // ส่งข้อความอัตโนมัติต่อ (ถ้ามี)
+    if (autoMsg) {
+      await fetch('/ecommerce/chat/' + activeChatId + '/reply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: autoMsg })
+      })
+    }
+
     closeModal('qrModal')
-    if (j.ok) { await loadChatMessages(); alert('ส่ง QR ไปยังลูกค้าแล้ว') }
-    else { alert('ส่งไม่สำเร็จ: ' + j.error) }
+    await loadChatMessages()
   })
 }
 
