@@ -2,8 +2,11 @@ const express = require('express')
 const router = express.Router()
 const https = require('https')
 const crypto = require('crypto')
+const multer = require('multer')
 const { requireAuth } = require('../middleware/auth')
 const { supabase, supabaseAdmin } = require('../config/supabase')
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } })
 
 // ─── LINE signature verification ─────────────────────────────────────────────
 function verifyLineSignature(channelSecret, rawBody, signatureHeader) {
@@ -234,6 +237,66 @@ router.post('/chat/:chatId/reply', requireAuth, async (req, res) => {
     await supabaseAdmin.from('ecommerce_chats').update({ last_message: message, last_message_at: new Date() }).eq('id', chat.id)
 
     res.json({ ok: true })
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message })
+  }
+})
+
+// ─── Chat: upload image → Supabase Storage → LINE push ───────────────────────
+router.post('/chat/:chatId/upload', requireAuth, upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ ok: false, error: 'ไม่มีไฟล์' })
+
+    const { data: chat } = await supabase
+      .from('ecommerce_chats')
+      .select('*, store:ecommerce_stores(access_token)')
+      .eq('id', req.params.chatId)
+      .single()
+    if (!chat) return res.status(404).json({ ok: false, error: 'ไม่พบแชท' })
+
+    // อัปโหลดไปที่ Supabase Storage bucket: chat-images
+    const ext = (req.file.originalname || 'image.jpg').split('.').pop().toLowerCase() || 'jpg'
+    const filename = `${chat.id}/${Date.now()}.${ext}`
+
+    let { error: upErr } = await supabaseAdmin.storage
+      .from('chat-images')
+      .upload(filename, req.file.buffer, { contentType: req.file.mimetype, upsert: false })
+
+    if (upErr && upErr.message && upErr.message.includes('Bucket not found')) {
+      // สร้าง bucket อัตโนมัติถ้ายังไม่มี
+      await supabaseAdmin.storage.createBucket('chat-images', { public: true })
+      const retry = await supabaseAdmin.storage
+        .from('chat-images')
+        .upload(filename, req.file.buffer, { contentType: req.file.mimetype, upsert: false })
+      upErr = retry.error
+    }
+
+    if (upErr) return res.status(500).json({ ok: false, error: 'Storage: ' + upErr.message })
+
+    const { data: { publicUrl } } = supabaseAdmin.storage.from('chat-images').getPublicUrl(filename)
+
+    // ส่งรูปไปยัง LINE ลูกค้า (ถ้ามี access token)
+    if (chat.store?.access_token && chat.platform_chat_id) {
+      await lineRequest('/v2/bot/message/push', 'POST', chat.store.access_token, {
+        to: chat.platform_chat_id,
+        messages: [{ type: 'image', originalContentUrl: publicUrl, previewImageUrl: publicUrl }]
+      })
+    }
+
+    // บันทึกลง DB
+    await supabaseAdmin.from('ecommerce_chat_messages').insert([{
+      chat_id: chat.id,
+      sender_type: 'merchant',
+      message: '[รูปภาพ]',
+      message_type: 'image',
+      media_url: publicUrl,
+      sent_at: new Date()
+    }])
+    await supabaseAdmin.from('ecommerce_chats').update({
+      last_message: '[รูปภาพ]', last_message_at: new Date()
+    }).eq('id', chat.id)
+
+    res.json({ ok: true, url: publicUrl })
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message })
   }
