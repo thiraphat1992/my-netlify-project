@@ -1,0 +1,343 @@
+<%- include('../partials/header') %>
+
+<% const docTypeLabel = { receipt: 'ใบเสร็จรับเงิน', invoice: 'ใบแจ้งหนี้ / ใบกำกับภาษี', billing_note: 'ใบวางบิล', delivery_note: 'ใบส่งสินค้า', po: 'ใบสั่งซื้อ' } %>
+<% const statusLabel = { pending: 'รอชำระ', paid: 'ชำระแล้ว', partial: 'ชำระบางส่วน', cancelled: 'ยกเลิก' } %>
+<% const statusClass = { pending: 'badge-warning', paid: 'badge-success', partial: 'badge-info', cancelled: 'badge-danger' } %>
+
+<style>
+  /* สไตล์สำหรับการแสดงผลกระดาษบนหน้าจอ */
+  .preview-container {
+    display: flex;
+    justify-content: center;
+    background: #f1f5f9;
+    padding: 20px;
+    border-radius: 8px;
+    overflow-x: auto;
+  }
+  
+  #print-area {
+    background: #ffffff;
+    color: #000000;
+    font-family: 'Sarabun', 'Noto Sans Thai', sans-serif;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    padding: 15mm;
+    box-sizing: border-box;
+    position: relative;
+    transition: all 0.3s ease;
+    margin: 0 auto;
+    /* ขนาดกระดาษจะถูกควบคุมผ่าน JavaScript */
+  }
+
+  /* ตารางเอกสาร */
+  .doc-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+  .doc-table th { border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 8px; text-align: left; background: #f8f9fa; }
+  .doc-table td { padding: 8px; border-bottom: 1px solid #eee; }
+  .doc-table .text-right { text-align: right; }
+  .doc-table .text-center { text-align: center; }
+
+  /* CSS สำหรับกระดาษขนาดเล็ก (A5 และ 9x5.5) เพื่อไม่ให้เนื้อหาล้น */
+  #print-area[data-size="A5"],
+  #print-area[data-size="9x5_5"] {
+    padding: 8mm !important;
+    font-size: 0.85em;
+  }
+  #print-area[data-size="A5"] h1, #print-area[data-size="9x5_5"] h1 { font-size: 16px !important; margin-bottom: 2px; }
+  #print-area[data-size="A5"] h2, #print-area[data-size="9x5_5"] h2 { font-size: 18px !important; margin-bottom: 5px; }
+  #print-area[data-size="A5"] .doc-table th, #print-area[data-size="A5"] .doc-table td,
+  #print-area[data-size="9x5_5"] .doc-table th, #print-area[data-size="9x5_5"] .doc-table td { padding: 4px 6px; }
+  #print-area[data-size="A5"] .sign-area, #print-area[data-size="9x5_5"] .sign-area { margin-top: 20px !important; }
+  #print-area[data-size="A5"] .min-h-table, #print-area[data-size="9x5_5"] .min-h-table { min-height: 150px !important; }
+
+  /* สไตล์สำหรับการปริ้นต์ (ซ่อน UI ที่ไม่จำเป็น) */
+  @media print {
+    body { background: #ffffff; }
+    .sidebar, .topbar, .page-header, .no-print { display: none !important; }
+    .main-content { margin-left: 0 !important; padding: 0 !important; }
+    .preview-container { padding: 0; background: transparent; display: block; overflow: visible; }
+    #print-area {
+      box-shadow: none !important;
+      margin: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      min-height: auto !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      page-break-after: avoid;
+    }
+  }
+</style>
+
+<!-- แถบเครื่องมือจัดการเอกสาร (ซ่อนตอนปริ้นต์) -->
+<div class="page-header no-print">
+  <div>
+    <h1><%= order.doc_no %></h1>
+    <p>
+      <%= docTypeLabel[order.doc_type] || order.doc_type %> • 
+      <span class="badge <%= statusClass[order.payment_status] || 'badge-gray' %>" style="margin-left: 5px;">
+        <%= statusLabel[order.payment_status] || order.payment_status %>
+      </span>
+    </p>
+  </div>
+  
+  <div class="page-header-actions" style="display:flex; gap:10px; align-items:center;">
+    
+    <!-- ขนาดกระดาษ -->
+    <select id="paper-size" class="form-control" style="width: auto; padding: 8px 12px; font-weight: 600;" onchange="updatePaperSettings()">
+      <option value="A4">A4 (210 x 297 mm)</option>
+      <option value="A5">A5 (148 x 210 mm)</option>
+      <option value="9x11">9 x 11 นิ้ว (ต่อเนื่องเต็ม)</option>
+      <option value="9x5_5">9 x 5.5 นิ้ว (ต่อเนื่องครึ่ง)</option>
+    </select>
+
+    <!-- แนวตั้ง / แนวนอน -->
+    <select id="paper-orientation" class="form-control" style="width: auto; padding: 8px 12px; font-weight: 600;" onchange="updatePaperSettings()">
+      <option value="portrait">แนวตั้ง (Portrait)</option>
+      <option value="landscape">แนวนอน (Landscape)</option>
+    </select>
+    
+    <button onclick="window.print()" class="btn btn-primary" style="background: #10b981; border: none;">
+      🖨️ พิมพ์เอกสาร
+    </button>
+
+    <% if (order.payment_status !== 'paid') { %>
+    <form action="/sales/<%= order.id %>/status?_method=PUT" method="POST" style="margin:0;">
+      <input type="hidden" name="payment_status" value="paid">
+      <button type="submit" class="btn btn-success">✓ ชำระแล้ว</button>
+    </form>
+    <% } %>
+    
+    <a href="/sales" class="btn btn-secondary">← กลับ</a>
+  </div>
+</div>
+
+<!-- พื้นที่เอกสาร -->
+<div class="preview-container no-print-bg">
+  <div id="print-area">
+    
+    <!-- ส่วนหัวเอกสาร: ข้อมูลร้านค้า และ เอกสาร -->
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 20px;">
+      <div style="max-width: 60%;">
+        <!-- ตั้งค่าโลโก้ และข้อมูลร้านค้าของคุณตรงนี้ -->
+        <h1 style="font-size: 20px; font-weight: 800; margin-bottom: 5px;">บริษัท บิซโฟลว์ จำกัด (สำนักงานใหญ่)</h1>
+        <div style="font-size: 13px; line-height: 1.5; color: #333;">
+          <p>ที่อยู่: 123/45 ถนนสุขุมวิท แขวงคลองเตย เขตคลองเตย กรุงเทพมหานคร 10110</p>
+          <p>เลขประจำตัวผู้เสียภาษี: 0105560000000</p>
+          <p>โทร: 02-123-4567 | อีเมล: contact@bizflow.co.th</p>
+        </div>
+      </div>
+      <div style="text-align:right;">
+        <h2 style="font-size: 24px; font-weight: 800; color: #6366f1; margin-bottom: 10px;"><%= docTypeLabel[order.doc_type] || 'บิลเงินสด' %></h2>
+        <div style="font-size: 13px; line-height: 1.6;">
+          <p><b>เลขที่:</b> <span style="font-family:'Plus Jakarta Sans',sans-serif;"><%= order.doc_no %></span></p>
+          <p><b>วันที่:</b> <%= new Date(order.doc_date).toLocaleDateString('th-TH', {day:'numeric', month:'short', year:'numeric'}) %></p>
+          <% if (order.due_date) { %>
+            <p><b>ครบกำหนด:</b> <%= new Date(order.due_date).toLocaleDateString('th-TH', {day:'numeric', month:'short', year:'numeric'}) %></p>
+          <% } %>
+        </div>
+      </div>
+    </div>
+
+    <hr style="border: 1px solid #000; margin-bottom: 15px;" />
+
+    <!-- ข้อมูลลูกค้า -->
+    <div style="border: 1px solid #000; border-radius: 6px; padding: 10px 12px; margin-bottom: 15px; display: flex;">
+      <div style="width: 60%; font-size: 13px; border-right: 1px solid #eee; padding-right: 15px;">
+        <p style="font-weight: 700; font-size: 14px; margin-bottom: 4px;">ลูกค้า (Customer)</p>
+        <p style="font-weight: 700; font-size: 15px;"><%= order.customer_name || 'ลูกค้าทั่วไป (เงินสด)' %></p>
+        <% if (order.customer_address) { %><p style="margin-top: 4px;"><b>ที่อยู่:</b> <%= order.customer_address %></p><% } %>
+      </div>
+      <div style="width: 40%; font-size: 13px; padding-left: 15px; display: flex; flex-direction: column; justify-content: center;">
+        <p><b>เลขประจำตัวผู้เสียภาษี:</b> <%= order.customer_tax_id || '-' %></p>
+        <% if (order.payment_method) { %><p style="margin-top: 4px;"><b>วิธีชำระเงิน:</b> <%= order.payment_method %></p><% } %>
+      </div>
+    </div>
+
+    <!-- ตารางสินค้า -->
+    <div class="min-h-table" style="min-height: 300px;">
+      <table class="doc-table">
+        <thead>
+          <tr>
+            <th class="text-center" style="width: 50px;">ลำดับ</th>
+            <th>รายการสินค้า / รายละเอียด</th>
+            <th class="text-center" style="width: 80px;">หน่วย</th>
+            <th class="text-right" style="width: 80px;">จำนวน</th>
+            <th class="text-right" style="width: 100px;">ราคา/หน่วย</th>
+            <th class="text-right" style="width: 120px;">จำนวนเงิน</th>
+          </tr>
+        </thead>
+        <tbody style="font-size: 13px;">
+          <% items.forEach((item, i) => { %>
+          <tr>
+            <td class="text-center"><%= i+1 %></td>
+            <td>
+              <div style="font-weight:600;"><%= item.product_name %></div>
+              <% if (item.product_code) { %><div style="font-size:11.5px; color:#666;">รหัส: <%= item.product_code %></div><% } %>
+            </td>
+            <td class="text-center"><%= item.unit %></td>
+            <td class="text-right"><%= parseFloat(item.qty).toLocaleString('th-TH') %></td>
+            <td class="text-right"><%= parseFloat(item.unit_price).toLocaleString('th-TH',{minimumFractionDigits:2}) %></td>
+            <td class="text-right" style="font-weight:700;"><%= parseFloat(item.line_total).toLocaleString('th-TH',{minimumFractionDigits:2}) %></td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- สรุปยอดและลายเซ็น -->
+    <div style="border-top: 2px solid #000; padding-top: 15px; display: flex; justify-content: space-between;">
+      
+      <!-- ข้อความบาท + หมายเหตุ -->
+      <div style="width: 55%; font-size: 13px;">
+        <div style="background: #f8f9fa; border: 1px solid #ddd; padding: 10px; border-radius: 6px; text-align: center;">
+          <p style="font-weight: 700; color: #555; font-size: 11px; margin-bottom: 2px;">ตัวอักษร</p>
+          <p id="thai-baht-text" style="font-weight: 700; font-style: italic; font-size: 16px;"></p>
+        </div>
+        <% if (order.notes) { %>
+        <div style="margin-top: 10px;">
+          <b>หมายเหตุ:</b> <%= order.notes %>
+        </div>
+        <% } %>
+      </div>
+
+      <!-- สรุปตัวเลข -->
+      <div style="width: 40%; font-size: 13px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom: 6px;">
+          <span>รวมเงิน (Sub-Total)</span>
+          <span style="font-weight:700;"><%= parseFloat(order.subtotal || 0).toLocaleString('th-TH',{minimumFractionDigits:2}) %></span>
+        </div>
+        <% if (parseFloat(order.discount_amount) > 0) { %>
+        <div style="display:flex; justify-content:space-between; margin-bottom: 6px; color: #dc2626;">
+          <span>ส่วนลด (Discount)</span>
+          <span style="font-weight:700;">-<%= parseFloat(order.discount_amount).toLocaleString('th-TH',{minimumFractionDigits:2}) %></span>
+        </div>
+        <% } %>
+        <% if (parseFloat(order.vat_amount) > 0) { %>
+        <div style="display:flex; justify-content:space-between; margin-bottom: 6px;">
+          <span>ภาษีมูลค่าเพิ่ม 7% (VAT)</span>
+          <span style="font-weight:700;"><%= parseFloat(order.vat_amount).toLocaleString('th-TH',{minimumFractionDigits:2}) %></span>
+        </div>
+        <% } %>
+        
+        <div style="display:flex; justify-content:space-between; align-items:center; background: #f1f5f9; padding: 8px 10px; border-radius: 6px; margin-top: 10px;">
+          <span style="font-weight:800; font-size: 15px;">ยอดสุทธิ (Total)</span>
+          <span style="font-weight:800; font-size: 18px; font-family:'Plus Jakarta Sans',sans-serif; color: #6366f1;">
+            ฿<%= parseFloat(order.total || 0).toLocaleString('th-TH',{minimumFractionDigits:2}) %>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ลายเซ็น -->
+    <div class="sign-area" style="display: flex; justify-content: space-around; margin-top: 40px; text-align: center; font-size: 13px;">
+      <div>
+        <div style="border-bottom: 1px dotted #000; width: 150px; margin: 0 auto 10px;"></div>
+        <p>ผู้รับสินค้า / ลูกค้า</p>
+        <p style="color: #666; font-size: 11px; margin-top: 4px;">วันที่ _______/_______/_______</p>
+      </div>
+      <div>
+        <div style="border-bottom: 1px dotted #000; width: 150px; margin: 0 auto 10px;"></div>
+        <p>ผู้รับมอบอำนาจ / ผู้ออกเอกสาร</p>
+        <p style="color: #666; font-size: 11px; margin-top: 4px;">วันที่ _______/_______/_______</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // แปลงตัวเลขเป็นข้อความภาษาไทย
+  function thaiBahtText(amount) {
+    if (isNaN(amount) || amount === 0) return "ศูนย์บาทถ้วน";
+    const digits = ["ศูนย์", "หนึ่ง", "สอง", "สาม", "สี่", "ห้า", "หก", "เจ็ด", "แปด", "เก้า"];
+    const positions = ["", "สิบ", "ร้อย", "พัน", "หมื่น", "แสน", "ล้าน"];
+    const number = Math.abs(amount).toFixed(2).split(".");
+    let bahtText = "";
+    const integer = number[0];
+    const decimal = number[1] || "00";
+
+    if (parseInt(integer) > 0) {
+      const len = integer.length;
+      for (let i = 0; i < len; i++) {
+        const digit = parseInt(integer.charAt(i));
+        const pos = len - i - 1;
+        if (digit !== 0) {
+          if (pos % 6 === 1 && digit === 1) bahtText += "สิบ";
+          else if (pos % 6 === 1 && digit === 2) bahtText += "ยี่สิบ";
+          else if (pos % 6 === 0 && digit === 1 && i > 0 && (len - i - 1) % 6 === 0) bahtText += "เอ็ด";
+          else bahtText += digits[digit] + positions[pos % 6];
+        }
+        if (pos === 6) bahtText += "ล้าน";
+      }
+      bahtText += "บาท";
+    } else { bahtText = "ศูนย์บาท"; }
+
+    if (parseInt(decimal) === 0) bahtText += "ถ้วน";
+    else {
+      const d1 = parseInt(decimal.charAt(0));
+      const d2 = parseInt(decimal.charAt(1));
+      if (d1 > 0) {
+        if (d1 === 1) bahtText += "สิบ";
+        else if (d1 === 2) bahtText += "ยี่สิบ";
+        else bahtText += digits[d1] + "สิบ";
+      }
+      if (d2 > 0) {
+        if (d2 === 1 && d1 > 0) bahtText += "เอ็ด";
+        else bahtText += digits[d2];
+      }
+      bahtText += "สตางค์";
+    }
+    return bahtText;
+  }
+
+  // อัปเดตขนาดกระดาษและแนวตั้ง/แนวนอน
+  function updatePaperSettings() {
+    const size = document.getElementById('paper-size').value;
+    const orientation = document.getElementById('paper-orientation').value;
+    const printArea = document.getElementById('print-area');
+    
+    // ตั้งค่าความกว้างและความสูงพื้นฐานของแต่ละ Size
+    const paperDimensions = {
+      'A4': { w: '210mm', h: '297mm' },
+      'A5': { w: '148mm', h: '210mm' },
+      '9x11': { w: '9in', h: '11in' },
+      // 9x5.5 กระดาษต่อเนื่องครึ่งหน้า ปกติจะกว้าง 9 นิ้ว สูง 5.5 นิ้ว (นับเป็น Portrait ของฟอร์มนี้)
+      '9x5_5': { w: '9in', h: '5.5in' }
+    };
+
+    let width = paperDimensions[size].w;
+    let height = paperDimensions[size].h;
+
+    // สลับกว้าง-ยาว หากเลือกเป็นแนวนอน
+    if (orientation === 'landscape') {
+      width = paperDimensions[size].h;
+      height = paperDimensions[size].w;
+    }
+
+    // เซ็ตข้อมูลลง CSS Preview บนหน้าจอ
+    printArea.style.width = width;
+    printArea.style.minHeight = height;
+    printArea.setAttribute('data-size', size); // แนบ attribute ไว้ให้ CSS ด้านบนจัดการ padding
+
+    // เขียน tag <style> แบบ Dynamic ให้กับ @page สำหรับเครื่อง Print
+    let pageCSS = `@page { size: ${width} ${height}; margin: 0; }`;
+    let styleTag = document.getElementById('dynamic-print-style');
+    
+    if(!styleTag) {
+      styleTag = document.createElement('style');
+      styleTag.id = 'dynamic-print-style';
+      document.head.appendChild(styleTag);
+    }
+    styleTag.innerHTML = pageCSS;
+  }
+
+  // ทำงานเมื่อโหลดหน้าเสร็จ
+  document.addEventListener("DOMContentLoaded", () => {
+    const totalAmount = <%= parseFloat(order.total) || 0 %>;
+    document.getElementById('thai-baht-text').textContent = '( ' + thaiBahtText(totalAmount) + ' )';
+    
+    // ตั้งค่า Default เริ่มต้น
+    updatePaperSettings();
+  });
+</script>
+
+<%- include('../partials/footer') %>

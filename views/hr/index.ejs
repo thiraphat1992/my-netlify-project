@@ -1,0 +1,267 @@
+<%- include('../partials/header') %>
+
+<div class="page-header">
+  <div>
+    <h1><%= tab === 'payroll' ? 'เงินเดือน' : tab === 'leave' ? 'วันลา' : 'พนักงาน' %></h1>
+    <p>จัดการทรัพยากรบุคคลและข้อมูลพนักงาน</p>
+  </div>
+  <% if (tab === 'employees') { %>
+  <a href="/hr/employees/new" class="btn btn-primary">+ เพิ่มพนักงาน</a>
+  <% } else if (tab === 'leave') { %>
+  <button class="btn btn-primary" onclick="openModal('addLeaveModal')">+ บันทึกวันลา</button>
+  <% } %>
+</div>
+
+<% if (success && success.length > 0) { %><div class="alert alert-success">✓ <%= success[0] %></div><% } %>
+<% if (error && error.length > 0) { %><div class="alert alert-error">⚠ <%= error[0] %></div><% } %>
+
+<div class="tab-bar">
+  <a href="/hr" class="tab-btn <%= tab === 'employees' ? 'active' : '' %>" style="text-decoration:none;">👥 พนักงาน (<%= employees.length %>)</a>
+  <a href="/hr/payroll" class="tab-btn <%= tab === 'payroll' ? 'active' : '' %>" style="text-decoration:none;">💵 เงินเดือน</a>
+  <a href="/hr/leave" class="tab-btn <%= tab === 'leave' ? 'active' : '' %>" style="text-decoration:none;">🗓 วันลา</a>
+</div>
+
+<!-- TAB: พนักงาน -->
+<% if (tab === 'employees') { %>
+<div style="display:grid;grid-template-columns:1fr 260px;gap:20px;align-items:start;">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">รายชื่อพนักงานทั้งหมด (<%= employees.length %> คน)</span>
+      <div class="search-wrap" style="width:240px;">
+        <span class="search-icon">🔍</span>
+        <input type="text" class="search-input" id="searchInput" placeholder="ค้นหาชื่อ, ตำแหน่ง..." oninput="filterTable()">
+      </div>
+    </div>
+    <div class="table-wrap">
+      <% if (employees.length > 0) { %>
+      <table class="data-table" id="empTable">
+        <thead>
+          <tr>
+            <th>รหัส</th>
+            <th>ชื่อ-นามสกุล</th>
+            <th>แผนก</th>
+            <th>ตำแหน่ง</th>
+            <th>ประเภท</th>
+            <th style="text-align:right;">เงินเดือน</th>
+            <th style="text-align:center;">สถานะ</th>
+            <th style="text-align:center;">จัดการ</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% employees.forEach(e => { %>
+          <tr>
+            <td style="font-size:12.5px;color:var(--text-3);font-family:'Plus Jakarta Sans',sans-serif;"><%= e.code %></td>
+            <td>
+              <div style="font-weight:600;"><%= e.title ? e.title + ' ' : '' %><%= e.first_name %> <%= e.last_name %></div>
+              <% if (e.nickname) { %><div style="font-size:11.5px;color:var(--text-4);">(<%= e.nickname %>)</div><% } %>
+            </td>
+            <td><%= e.dept?.name || '-' %></td>
+            <td><%= e.position || '-' %></td>
+            <td>
+              <span class="badge <%= e.employment_type==='full_time'?'badge-primary':e.employment_type==='part_time'?'badge-warning':'badge-gray' %>">
+                <%= e.employment_type==='full_time'?'ประจำ':e.employment_type==='part_time'?'พาร์ทไทม์':'สัญญาจ้าง' %>
+              </span>
+            </td>
+            <td style="text-align:right;font-family:'Plus Jakarta Sans',sans-serif;font-weight:600;">฿<%= (parseFloat(e.base_salary)||0).toLocaleString('th-TH',{minimumFractionDigits:0}) %></td>
+            <td style="text-align:center;">
+              <span class="badge <%= e.status==='active'?'badge-success':e.status==='resigned'?'badge-warning':'badge-danger' %>">
+                <%= e.status==='active'?'ทำงาน':e.status==='resigned'?'ลาออก':'พ้นสภาพ' %>
+              </span>
+            </td>
+            <td style="text-align:center;">
+              <div style="display:flex;gap:6px;justify-content:center;">
+                <a href="/hr/employees/<%= e.id %>/edit" class="btn btn-secondary btn-xs">แก้ไข</a>
+                <form action="/hr/employees/<%= e.id %>?_method=DELETE" method="POST" style="margin:0;" id="del_<%= e.id %>">
+                  <button type="button" class="btn btn-danger btn-xs" onclick="if(confirm('ลบพนักงาน <%= e.first_name %> <%= e.last_name %>?')) document.getElementById('del_<%= e.id %>').submit()">ลบ</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+      <% } else { %>
+      <div class="empty-state">
+        <div class="empty-icon">👥</div>
+        <div class="empty-title">ยังไม่มีข้อมูลพนักงาน</div>
+        <div class="empty-desc"><a href="/hr/employees/new" style="color:var(--primary);">+ เพิ่มพนักงานคนแรก</a></div>
+      </div>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- แผนก -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">🏗 แผนก</span></div>
+    <div class="card-body">
+      <% departments.forEach(d => { %>
+        <div style="padding:8px 0;border-bottom:1px solid var(--border-2);font-size:13.5px;color:var(--text-2);"><%= d.name %></div>
+      <% }) %>
+      <% if (departments.length === 0) { %><div style="font-size:13px;color:var(--text-4);padding:8px 0;">ยังไม่มีแผนก</div><% } %>
+      <form action="/hr/departments" method="POST" style="margin-top:14px;">
+        <input type="text" name="name" class="form-control" placeholder="ชื่อแผนกใหม่" required style="margin-bottom:8px;">
+        <button type="submit" class="btn btn-primary" style="width:100%;">+ เพิ่มแผนก</button>
+      </form>
+    </div>
+  </div>
+</div>
+<% } %>
+
+<!-- TAB: เงินเดือน -->
+<% if (tab === 'payroll') { %>
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;">
+  <div class="stat-card">
+    <div class="stat-label">พนักงาน Active</div>
+    <div class="stat-value"><%= employees.length %></div>
+    <div class="stat-sub">คน</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">เงินเดือนรวม/เดือน</div>
+    <div class="stat-value" style="font-size:20px;">฿<%= employees.reduce((s,e)=>s+(parseFloat(e.base_salary)||0),0).toLocaleString('th-TH',{minimumFractionDigits:0}) %></div>
+    <div class="stat-sub">ประมาณการ</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">เฉลี่ย/คน</div>
+    <div class="stat-value" style="font-size:20px;">฿<%= employees.length > 0 ? Math.round(employees.reduce((s,e)=>s+(parseFloat(e.base_salary)||0),0)/employees.length).toLocaleString('th-TH') : '0' %></div>
+    <div class="stat-sub">บาท</div>
+  </div>
+</div>
+<div class="card">
+  <div class="card-header"><span class="card-title">รายชื่อพนักงานและเงินเดือน</span></div>
+  <div class="table-wrap">
+    <% if (employees.length > 0) { %>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>รหัส</th><th>ชื่อ-นามสกุล</th><th>แผนก</th><th>ประเภทเงินเดือน</th><th style="text-align:right;">เงินเดือนฐาน</th><th>ธนาคาร</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% employees.forEach(e => { %>
+        <tr>
+          <td style="font-size:12.5px;color:var(--text-3)"><%= e.code %></td>
+          <td style="font-weight:600;"><%= e.first_name %> <%= e.last_name %></td>
+          <td><%= e.dept?.name || '-' %></td>
+          <td><span class="badge badge-gray"><%= e.salary_type==='monthly'?'รายเดือน':e.salary_type==='daily'?'รายวัน':'รายชั่วโมง' %></span></td>
+          <td style="text-align:right;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;color:var(--primary);">฿<%= (parseFloat(e.base_salary)||0).toLocaleString('th-TH',{minimumFractionDigits:2}) %></td>
+          <td style="font-size:12.5px;color:var(--text-3);"><%= e.bank_name ? e.bank_name + ' ' + (e.bank_account||'') : '-' %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <% } else { %>
+    <div class="empty-state"><div class="empty-icon">💵</div><div class="empty-title">ยังไม่มีข้อมูลพนักงาน</div></div>
+    <% } %>
+  </div>
+</div>
+<% } %>
+
+<!-- TAB: วันลา -->
+<% if (tab === 'leave') { %>
+<div class="card">
+  <div class="card-header"><span class="card-title">รายการคำขอลา</span></div>
+  <div class="table-wrap">
+    <% if (leaves && leaves.length > 0) { %>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>พนักงาน</th><th>ประเภทการลา</th><th>วันที่เริ่ม</th><th>วันที่สิ้นสุด</th><th style="text-align:center;">จำนวนวัน</th><th>เหตุผล</th><th style="text-align:center;">สถานะ</th><th style="text-align:center;">จัดการ</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% const leaveTypeLabel = {annual:'ลาพักร้อน',sick:'ลาป่วย',personal:'ลากิจ',maternity:'ลาคลอด',ordain:'ลาบวช'} %>
+        <% const leaveStatusClass = {pending:'badge-warning',approved:'badge-success',rejected:'badge-danger'} %>
+        <% leaves.forEach(l => { %>
+        <tr>
+          <td style="font-weight:600;"><%= l.emp ? l.emp.first_name + ' ' + l.emp.last_name : '-' %></td>
+          <td><span class="badge badge-gray"><%= leaveTypeLabel[l.leave_type] || l.leave_type %></span></td>
+          <td style="font-size:12.5px;"><%= new Date(l.start_date).toLocaleDateString('th-TH') %></td>
+          <td style="font-size:12.5px;"><%= new Date(l.end_date).toLocaleDateString('th-TH') %></td>
+          <td style="text-align:center;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;"><%= l.days %></td>
+          <td style="font-size:12.5px;color:var(--text-3);"><%= l.reason || '-' %></td>
+          <td style="text-align:center;"><span class="badge <%= leaveStatusClass[l.status] || 'badge-gray' %>"><%= l.status==='pending'?'รอพิจารณา':l.status==='approved'?'อนุมัติ':'ปฏิเสธ' %></span></td>
+          <td style="text-align:center;">
+            <% if (l.status === 'pending') { %>
+            <div style="display:flex;gap:4px;justify-content:center;">
+              <form action="/hr/leave/<%= l.id %>/status?_method=PUT" method="POST" style="margin:0;"><input type="hidden" name="status" value="approved"><button type="submit" class="btn btn-success btn-xs">อนุมัติ</button></form>
+              <form action="/hr/leave/<%= l.id %>/status?_method=PUT" method="POST" style="margin:0;"><input type="hidden" name="status" value="rejected"><button type="submit" class="btn btn-danger btn-xs">ปฏิเสธ</button></form>
+            </div>
+            <% } %>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <% } else { %>
+    <div class="empty-state"><div class="empty-icon">🗓</div><div class="empty-title">ยังไม่มีคำขอลา</div></div>
+    <% } %>
+  </div>
+</div>
+
+<!-- Modal บันทึกวันลา -->
+<div class="modal-overlay" id="addLeaveModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">บันทึกคำขอลา</span>
+      <button class="modal-close" onclick="closeModal('addLeaveModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <form action="/hr/leave" method="POST">
+        <div class="form-group">
+          <label class="form-label">พนักงาน *</label>
+          <select name="employee_id" class="form-control" required>
+            <option value="">-- เลือกพนักงาน --</option>
+            <% employees.forEach(e => { %><option value="<%= e.id %>"><%= e.first_name %> <%= e.last_name %></option><% }) %>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">ประเภทการลา *</label>
+          <select name="leave_type" class="form-control" required>
+            <option value="annual">ลาพักร้อน</option>
+            <option value="sick">ลาป่วย</option>
+            <option value="personal">ลากิจ</option>
+            <option value="maternity">ลาคลอด</option>
+            <option value="ordain">ลาบวช</option>
+          </select>
+        </div>
+        <div class="form-row form-row-3">
+          <div class="form-group">
+            <label class="form-label">วันที่เริ่ม *</label>
+            <input type="date" name="start_date" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">วันที่สิ้นสุด *</label>
+            <input type="date" name="end_date" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">จำนวนวัน *</label>
+            <input type="number" name="days" class="form-control" min="0.5" step="0.5" value="1" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">เหตุผล</label>
+          <textarea name="reason" class="form-control" rows="2" placeholder="ระบุเหตุผลการลา"></textarea>
+        </div>
+        <div class="modal-footer" style="padding:0;border:none;margin-top:8px;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('addLeaveModal')">ยกเลิก</button>
+          <button type="submit" class="btn btn-primary">บันทึกคำขอลา</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<% } %>
+
+<script>
+  function openModal(id) { document.getElementById(id).classList.add('active') }
+  function closeModal(id) { document.getElementById(id).classList.remove('active') }
+  window.onclick = e => { if (e.target.classList.contains('modal-overlay')) e.target.classList.remove('active') }
+  function filterTable() {
+    const q = document.getElementById('searchInput').value.toLowerCase()
+    document.querySelectorAll('#empTable tbody tr').forEach(row => {
+      row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none'
+    })
+  }
+</script>
+
+<%- include('../partials/footer') %>

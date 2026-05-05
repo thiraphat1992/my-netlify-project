@@ -1,0 +1,279 @@
+<%- include('../partials/header') %>
+
+<style>
+  .new-order-grid { display: grid; grid-template-columns: 1fr 320px; gap: 20px; align-items: start; }
+  .items-table { width: 100%; border-collapse: collapse; }
+  .items-table th { padding: 9px 12px; font-size: 11.5px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.5px; background: var(--surface-2); border-bottom: 1px solid var(--border); text-align: left; }
+  .items-table td { padding: 8px 10px; border-bottom: 1px solid var(--border-2); vertical-align: middle; }
+  .items-table .form-control { padding: 7px 10px; font-size: 13px; }
+  .total-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border-2); font-size: 13.5px; }
+  .total-row.grand { font-size: 16px; font-weight: 800; font-family: 'Plus Jakarta Sans', sans-serif; border-bottom: none; border-top: 2px solid var(--border); margin-top: 6px; padding-top: 12px; color: var(--primary); }
+  .total-label { color: var(--text-3); }
+</style>
+
+<div class="page-header">
+  <div>
+    <h1>สร้างงานขายใหม่</h1>
+    <p>สร้างเอกสารขาย บิล ใบกำกับภาษี</p>
+  </div>
+  <a href="/sales" class="btn btn-secondary">← กลับ</a>
+</div>
+
+<form action="/sales" method="POST" id="orderForm">
+  <div class="new-order-grid">
+    <!-- Left: ข้อมูลหลัก + รายการสินค้า -->
+    <div style="display:flex;flex-direction:column;gap:20px;">
+      <!-- ข้อมูลเอกสาร -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">📄 ข้อมูลเอกสาร</span></div>
+        <div class="card-body">
+          <div class="form-row form-row-3">
+            <div class="form-group">
+              <label class="form-label">ประเภทเอกสาร *</label>
+              <select name="doc_type" class="form-control" required>
+                <option value="receipt">ใบเสร็จรับเงิน</option>
+                <option value="invoice">ใบแจ้งหนี้ / ใบกำกับภาษี</option>
+                <option value="billing_note">ใบวางบิล</option>
+                <option value="delivery_note">ใบส่งสินค้า</option>
+                <option value="po">ใบสั่งซื้อ</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">วันที่เอกสาร *</label>
+              <input type="date" name="doc_date" id="doc_date" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">วันครบกำหนด</label>
+              <input type="date" name="due_date" class="form-control">
+            </div>
+          </div>
+          <div class="form-row form-row-2">
+            <div class="form-group">
+              <label class="form-label">วิธีชำระเงิน</label>
+              <select name="payment_method" class="form-control">
+                <option value="">-- ไม่ระบุ --</option>
+                <option value="cash">เงินสด</option>
+                <option value="transfer">โอนเงิน</option>
+                <option value="check">เช็ค</option>
+                <option value="credit">บัตรเครดิต</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">หมายเหตุ</label>
+              <input type="text" name="notes" class="form-control" placeholder="หมายเหตุ (ถ้ามี)">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ข้อมูลลูกค้า -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🏢 ข้อมูลลูกค้า</span>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <label style="font-size:12.5px;color:var(--text-3);display:flex;align-items:center;gap:6px;cursor:pointer;">
+              <input type="checkbox" id="manualCustomer" onchange="toggleCustomerMode(this.checked)"> กรอกเอง
+            </label>
+          </div>
+        </div>
+        <div class="card-body">
+          <div id="customerSelect">
+            <div class="form-group">
+              <label class="form-label">เลือกลูกค้า</label>
+              <select name="customer_id" id="customerDropdown" class="form-control" onchange="fillCustomer(this)">
+                <option value="">-- เลือกลูกค้า หรือกรอกเอง --</option>
+                <% customers.forEach(c => { %>
+                  <option value="<%= c.id %>" data-name="<%= c.name %>" data-address="<%= c.address || '' %>" data-tax="<%= c.tax_id || '' %>"><%= c.name %></option>
+                <% }) %>
+              </select>
+            </div>
+          </div>
+          <div class="form-row form-row-2">
+            <div class="form-group">
+              <label class="form-label">ชื่อลูกค้า *</label>
+              <input type="text" name="customer_name" id="cust_name" class="form-control" required placeholder="ชื่อ / บริษัท">
+            </div>
+            <div class="form-group">
+              <label class="form-label">เลขประจำตัวผู้เสียภาษี</label>
+              <input type="text" name="customer_tax_id" id="cust_tax" class="form-control" placeholder="0000000000000">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">ที่อยู่</label>
+            <textarea name="customer_address" id="cust_address" class="form-control" rows="2" placeholder="ที่อยู่สำหรับออกเอกสาร"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- รายการสินค้า -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">📦 รายการสินค้า / บริการ</span>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="addRow()">+ เพิ่มรายการ</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th style="width:35%">สินค้า / บริการ</th>
+                <th style="width:10%">หน่วย</th>
+                <th style="width:10%">จำนวน</th>
+                <th style="width:15%">ราคา/หน่วย</th>
+                <th style="width:15%">รวม</th>
+                <th style="width:40px"></th>
+              </tr>
+            </thead>
+            <tbody id="itemsBody">
+              <tr class="item-row">
+                <td>
+                  <select class="form-control product-select" onchange="fillProduct(this)">
+                    <option value="">-- เลือกสินค้า --</option>
+                    <% products.forEach(p => { %>
+                      <option value="<%= p.id %>" data-name="<%= p.name %>" data-unit="<%= p.unit %>" data-price="<%= p.retail_price %>"><%= p.name %></option>
+                    <% }) %>
+                  </select>
+                  <input type="text" name="product_name[]" class="form-control product-name" placeholder="หรือพิมพ์ชื่อสินค้า" style="margin-top:6px;">
+                  <input type="hidden" name="product_id[]" class="product-id">
+                  <input type="hidden" name="product_code[]" class="product-code">
+                </td>
+                <td><input type="text" name="unit[]" class="form-control item-unit" value="ชิ้น"></td>
+                <td><input type="number" name="qty[]" class="form-control item-qty" value="1" min="0.001" step="0.001" onchange="calcRow(this)"></td>
+                <td><input type="number" name="unit_price[]" class="form-control item-price" value="0" step="0.01" onchange="calcRow(this)"></td>
+                <td><input type="number" name="line_total[]" class="form-control item-total" readonly style="background:var(--surface-2);font-weight:700;color:var(--primary);" value="0"></td>
+                <td><button type="button" onclick="removeRow(this)" class="btn btn-danger btn-xs" style="padding:5px 8px;">✕</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: สรุปยอด -->
+    <div style="display:flex;flex-direction:column;gap:16px;position:sticky;top:78px;">
+      <div class="card">
+        <div class="card-header"><span class="card-title">💰 สรุปยอด</span></div>
+        <div class="card-body">
+          <div class="total-row">
+            <span class="total-label">ราคารวม</span>
+            <span id="dispSubtotal">฿0.00</span>
+          </div>
+          <div class="total-row" style="align-items:flex-start;">
+            <span class="total-label">ส่วนลด</span>
+            <div style="text-align:right;">
+              <input type="number" name="discount_amount" id="discount" class="form-control" style="width:120px;text-align:right;padding:5px 8px;font-size:13px;" value="0" min="0" step="0.01" onchange="recalc()">
+            </div>
+          </div>
+          <div class="total-row">
+            <span class="total-label">ราคาก่อน VAT</span>
+            <span id="dispBeforeVat">฿0.00</span>
+          </div>
+          <div class="total-row" style="align-items:flex-start;">
+            <div>
+              <span class="total-label">VAT</span>
+              <select id="vatMode" class="form-control" style="width:100px;padding:4px 8px;font-size:12px;margin-top:4px;" onchange="recalc()">
+                <option value="none">ไม่มี VAT</option>
+                <option value="vat7">VAT 7%</option>
+              </select>
+            </div>
+            <span id="dispVat">฿0.00</span>
+          </div>
+          <div class="total-row grand">
+            <span>ยอดรวมทั้งสิ้น</span>
+            <span id="dispTotal">฿0.00</span>
+          </div>
+          <input type="hidden" name="subtotal" id="h_subtotal" value="0">
+          <input type="hidden" name="vat_amount" id="h_vat" value="0">
+          <input type="hidden" name="total" id="h_total" value="0">
+          <input type="hidden" name="net_payable" id="h_net" value="0">
+          <button type="submit" class="btn btn-primary" style="width:100%;margin-top:16px;padding:13px;">💾 บันทึกเอกสาร</button>
+          <a href="/sales" class="btn btn-secondary" style="width:100%;margin-top:8px;text-align:center;">ยกเลิก</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+
+<script>
+  document.getElementById('doc_date').valueAsDate = new Date()
+
+  const productsData = <%- JSON.stringify(products) %>
+
+  function fillCustomer(sel) {
+    const opt = sel.options[sel.selectedIndex]
+    document.getElementById('cust_name').value = opt.dataset.name || ''
+    document.getElementById('cust_address').value = opt.dataset.address || ''
+    document.getElementById('cust_tax').value = opt.dataset.tax || ''
+  }
+
+  function toggleCustomerMode(manual) {
+    document.getElementById('customerSelect').style.display = manual ? 'none' : 'block'
+    if (manual) {
+      document.getElementById('cust_name').value = ''
+      document.getElementById('cust_address').value = ''
+      document.getElementById('cust_tax').value = ''
+      document.querySelector('[name="customer_id"]').value = ''
+    }
+  }
+
+  function fillProduct(sel) {
+    const row = sel.closest('tr')
+    const opt = sel.options[sel.selectedIndex]
+    row.querySelector('.product-name').value = opt.dataset.name || ''
+    row.querySelector('.product-id').value = opt.value || ''
+    row.querySelector('.item-unit').value = opt.dataset.unit || 'ชิ้น'
+    row.querySelector('.item-price').value = opt.dataset.price || 0
+    calcRow(row.querySelector('.item-qty'))
+  }
+
+  function calcRow(input) {
+    const row = input.closest('tr')
+    const qty = parseFloat(row.querySelector('.item-qty').value) || 0
+    const price = parseFloat(row.querySelector('.item-price').value) || 0
+    row.querySelector('.item-total').value = (qty * price).toFixed(2)
+    recalc()
+  }
+
+  function recalc() {
+    let subtotal = 0
+    document.querySelectorAll('.item-total').forEach(el => subtotal += parseFloat(el.value) || 0)
+    const discount = parseFloat(document.getElementById('discount').value) || 0
+    const beforeVat = subtotal - discount
+    const useVat = document.getElementById('vatMode').value === 'vat7'
+    const vatAmt = useVat ? beforeVat * 0.07 : 0
+    const total = beforeVat + vatAmt
+
+    document.getElementById('dispSubtotal').textContent = '฿' + subtotal.toLocaleString('th-TH', {minimumFractionDigits:2})
+    document.getElementById('dispBeforeVat').textContent = '฿' + beforeVat.toLocaleString('th-TH', {minimumFractionDigits:2})
+    document.getElementById('dispVat').textContent = '฿' + vatAmt.toLocaleString('th-TH', {minimumFractionDigits:2})
+    document.getElementById('dispTotal').textContent = '฿' + total.toLocaleString('th-TH', {minimumFractionDigits:2})
+
+    document.getElementById('h_subtotal').value = beforeVat.toFixed(2)
+    document.getElementById('h_vat').value = vatAmt.toFixed(2)
+    document.getElementById('h_total').value = total.toFixed(2)
+    document.getElementById('h_net').value = total.toFixed(2)
+  }
+
+  function addRow() {
+    const body = document.getElementById('itemsBody')
+    const first = body.querySelector('tr.item-row')
+    const clone = first.cloneNode(true)
+    clone.querySelectorAll('input').forEach(i => {
+      if (i.type === 'number') i.value = i.name.includes('qty') ? 1 : 0
+      else if (i.name.includes('unit')) i.value = 'ชิ้น'
+      else i.value = ''
+    })
+    clone.querySelector('select').selectedIndex = 0
+    clone.querySelectorAll('select').forEach(s => s.addEventListener('change', function() { fillProduct(this) }))
+    clone.querySelectorAll('.item-qty, .item-price').forEach(i => i.addEventListener('change', function() { calcRow(this) }))
+    body.appendChild(clone)
+  }
+
+  function removeRow(btn) {
+    const rows = document.querySelectorAll('.item-row')
+    if (rows.length <= 1) return
+    btn.closest('tr').remove()
+    recalc()
+  }
+</script>
+
+<%- include('../partials/footer') %>

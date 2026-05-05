@@ -1,0 +1,16 @@
+[build]
+  command   = "npm install"
+  publish   = "public"
+  functions = "netlify/functions"
+
+[dev]
+  command = "node server.js"
+  port    = 3000
+
+[functions]
+  node_bundler = "zisi"
+
+[[redirects]]
+  from   = "/*"
+  to     = "/.netlify/functions/server"
+  status = 200

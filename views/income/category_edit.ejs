@@ -1,0 +1,44 @@
+<%- include('../partials/header') %>
+
+<div class="page-header">
+  <div>
+    <h1>แก้ไขหมวดหมู่</h1>
+    <p><%= category.name %></p>
+  </div>
+  <a href="/income/categories" class="btn btn-secondary">← กลับ</a>
+</div>
+
+<div style="max-width:480px;">
+  <div class="card">
+    <div class="card-header"><span class="card-title">ข้อมูลหมวดหมู่</span></div>
+    <div class="card-body">
+      <form action="/income/categories/<%= category.id %>?_method=PUT" method="POST">
+        <div class="form-group">
+          <label class="form-label">ประเภท *</label>
+          <select name="type" class="form-control" required>
+            <option value="income" <%= category.type === 'income' ? 'selected' : '' %>>รายรับ</option>
+            <option value="expense" <%= category.type === 'expense' ? 'selected' : '' %>>รายจ่าย</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">ชื่อหมวดหมู่ *</label>
+          <input type="text" name="name" class="form-control" value="<%= category.name %>" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">รหัสบัญชี</label>
+          <input type="text" name="code" class="form-control" value="<%= category.code || '' %>" placeholder="เช่น 5100">
+        </div>
+        <div class="form-group" style="display:flex;align-items:center;gap:10px;">
+          <input type="checkbox" id="is_active" name="is_active" style="width:17px;height:17px;accent-color:var(--primary);cursor:pointer;" <%= category.is_active ? 'checked' : '' %>>
+          <label for="is_active" style="font-size:14px;color:var(--text-2);cursor:pointer;">เปิดใช้งาน (Active)</label>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:8px;">
+          <button type="submit" class="btn btn-primary" style="flex:1;">บันทึกการแก้ไข</button>
+          <a href="/income/categories" class="btn btn-secondary">ยกเลิก</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

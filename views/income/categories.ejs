@@ -1,0 +1,79 @@
+<%- include('../partials/header') %>
+
+<div class="page-header">
+  <div>
+    <h1>หมวดหมู่บัญชี</h1>
+    <p>จัดการหมวดหมู่รายรับและรายจ่าย</p>
+  </div>
+  <a href="/income" class="btn btn-secondary">← กลับ</a>
+</div>
+
+<% if (error && error.length > 0) { %><div class="alert alert-error">⚠ <%= error[0] %></div><% } %>
+<% if (success && success.length > 0) { %><div class="alert alert-success">✓ <%= success[0] %></div><% } %>
+
+<div style="display:grid;grid-template-columns:300px 1fr;gap:20px;align-items:start;">
+  <div class="card">
+    <div class="card-header"><span class="card-title">+ เพิ่มหมวดหมู่</span></div>
+    <div class="card-body">
+      <form action="/income/categories" method="POST">
+        <div class="form-group">
+          <label class="form-label">ประเภท *</label>
+          <select name="type" class="form-control" required>
+            <option value="income">รายรับ</option>
+            <option value="expense" selected>รายจ่าย</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">ชื่อหมวดหมู่ *</label>
+          <input type="text" name="name" class="form-control" placeholder="เช่น ค่าน้ำ, ค่าไฟ" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">รหัสบัญชี</label>
+          <input type="text" name="code" class="form-control" placeholder="เช่น 5100">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;">บันทึกหมวดหมู่</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">หมวดหมู่ทั้งหมด (<%= categories.length %> หมวด)</span></div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>ชื่อหมวดหมู่</th>
+            <th>ประเภท</th>
+            <th>รหัสบัญชี</th>
+            <th style="text-align:center;">สถานะ</th>
+            <th style="text-align:center;">จัดการ</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (categories && categories.length > 0) { %>
+            <% categories.forEach(c => { %>
+            <tr>
+              <td style="font-weight:600;"><%= c.name %></td>
+              <td><span class="badge <%= c.type === 'income' ? 'badge-success' : 'badge-danger' %>"><%= c.type === 'income' ? 'รายรับ' : 'รายจ่าย' %></span></td>
+              <td style="font-family:'Plus Jakarta Sans',sans-serif;color:var(--text-3);"><%= c.code || '-' %></td>
+              <td style="text-align:center;"><span class="badge <%= c.is_active ? 'badge-success' : 'badge-gray' %>"><%= c.is_active ? 'ใช้งาน' : 'ปิด' %></span></td>
+              <td style="text-align:center;">
+                <div style="display:flex;gap:6px;justify-content:center;">
+                  <a href="/income/categories/<%= c.id %>/edit" class="btn btn-secondary btn-xs">แก้ไข</a>
+                  <form action="/income/categories/<%= c.id %>?_method=DELETE" method="POST" style="margin:0;" id="delcat_<%= c.id %>">
+                    <button type="button" class="btn btn-danger btn-xs" onclick="if(confirm('ลบหมวดหมู่ <%= c.name %>?')) document.getElementById('delcat_<%= c.id %>').submit()">ลบ</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            <% }) %>
+          <% } else { %>
+          <tr><td colspan="5"><div class="empty-state" style="padding:30px;"><div class="empty-icon">📂</div><div class="empty-title">ยังไม่มีหมวดหมู่</div></div></td></tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

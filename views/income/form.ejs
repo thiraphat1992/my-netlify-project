@@ -1,0 +1,62 @@
+<%- include('../partials/header') %>
+
+<div class="page-header">
+  <div>
+    <h1>บันทึกรายรับ-รายจ่าย</h1>
+    <p>เพิ่มรายการบัญชีใหม่</p>
+  </div>
+  <a href="/income" class="btn btn-secondary">← กลับ</a>
+</div>
+
+<div style="max-width:560px;">
+  <div class="card">
+    <div class="card-body">
+      <form action="/income" method="POST">
+        <div class="form-group">
+          <label class="form-label">ประเภทรายการ *</label>
+          <div style="display:flex;gap:20px;">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;font-weight:600;color:#10b981;">
+              <input type="radio" name="type" value="income" required style="accent-color:#10b981;"> รายรับ
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;font-weight:600;color:#ef4444;">
+              <input type="radio" name="type" value="expense" required checked style="accent-color:#ef4444;"> รายจ่าย
+            </label>
+          </div>
+        </div>
+        <div class="form-row form-row-2">
+          <div class="form-group">
+            <label class="form-label">วันที่ *</label>
+            <input type="date" id="transaction_date" name="transaction_date" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">หมวดหมู่บัญชี *</label>
+            <select id="category_id" name="category_id" class="form-control" required>
+              <option value="" disabled selected>-- เลือกหมวดหมู่ --</option>
+              <% categories.forEach(cat => { %>
+                <option value="<%= cat.id %>">[<%= cat.type === 'income' ? 'รับ' : 'จ่าย' %>] <%= cat.name %></option>
+              <% }) %>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">รายละเอียด *</label>
+          <input type="text" id="description" name="description" class="form-control" placeholder="เช่น ค่าไฟเดือนมีนาคม" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">จำนวนเงิน (฿) *</label>
+          <input type="number" step="0.01" id="amount" name="amount" class="form-control" placeholder="0.00" required min="0">
+        </div>
+        <div style="display:flex;gap:10px;">
+          <button type="submit" class="btn btn-primary" style="flex:1;padding:13px;">บันทึกข้อมูล</button>
+          <a href="/income" class="btn btn-secondary" style="padding:13px 20px;">ยกเลิก</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.getElementById('transaction_date').valueAsDate = new Date()
+</script>
+
+<%- include('../partials/footer') %>

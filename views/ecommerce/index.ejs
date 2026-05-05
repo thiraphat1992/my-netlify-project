@@ -1,0 +1,866 @@
+<%- include('../partials/header', { extraStyles: `
+<style>
+/* ─── E-commerce specific ─── */
+.status-tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:18px; }
+.stab { padding:6px 14px; border-radius:var(--radius-full); font-size:12.5px; font-weight:600;
+  border:1.5px solid var(--border); background:var(--surface); color:var(--text-3);
+  cursor:pointer; text-decoration:none; transition:all 0.15s; }
+.stab:hover { border-color:var(--primary); color:var(--primary); }
+.stab.active { background:var(--primary-dim); border-color:var(--primary); color:var(--primary); }
+.stab .cnt { display:inline-flex; align-items:center; justify-content:center;
+  min-width:18px; height:18px; border-radius:100px; font-size:10px;
+  background:var(--primary); color:#fff; margin-left:5px; padding:0 4px; }
+.stab.active .cnt { background:var(--primary-dark); }
+
+.order-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg);
+  padding:16px 18px; margin-bottom:10px; display:grid; grid-template-columns:1fr auto;
+  gap:10px; align-items:start; box-shadow:var(--shadow-sm); cursor:pointer; transition:all 0.15s; }
+.order-card:hover { border-color:var(--primary); box-shadow:var(--shadow-primary); }
+.order-card-left { min-width:0; }
+.order-no { font-family:'Plus Jakarta Sans',sans-serif; font-size:12px; color:var(--text-4); }
+.order-customer { font-size:14px; font-weight:700; color:var(--text); margin:2px 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.order-items-preview { font-size:12.5px; color:var(--text-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.order-meta { display:flex; gap:10px; margin-top:8px; align-items:center; flex-wrap:wrap; }
+.order-meta-item { font-size:11.5px; color:var(--text-4); display:flex; align-items:center; gap:3px; }
+.order-card-right { display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+.order-total { font-family:'Plus Jakarta Sans',sans-serif; font-size:15px; font-weight:800; color:var(--text); }
+
+/* Chat */
+.chat-list { display:flex; flex-direction:column; gap:2px; }
+.chat-item { display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:var(--radius-sm);
+  cursor:pointer; transition:background 0.15s; }
+.chat-item:hover { background:var(--surface-2); }
+.chat-item.active { background:var(--primary-dim); }
+.chat-avatar { width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg,var(--primary),var(--violet));
+  display:flex; align-items:center; justify-content:center; font-size:16px; color:#fff; font-weight:700; flex-shrink:0; }
+.chat-info { flex:1; min-width:0; }
+.chat-name { font-size:13.5px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.chat-preview { font-size:12px; color:var(--text-4); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px; }
+.chat-time { font-size:11px; color:var(--text-4); }
+.chat-unread { min-width:18px; height:18px; background:var(--danger); border-radius:100px;
+  color:#fff; font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; padding:0 4px; }
+
+/* Slide panel */
+.slide-panel { position:fixed; top:0; right:0; width:480px; max-width:95vw; height:100vh;
+  background:var(--surface); box-shadow:-8px 0 32px rgba(0,0,0,0.12); z-index:200;
+  transform:translateX(100%); transition:transform 0.3s cubic-bezier(.4,0,.2,1);
+  display:flex; flex-direction:column; }
+.slide-panel.open { transform:translateX(0); }
+.slide-panel-header { padding:18px 22px; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+.slide-panel-body { flex:1; overflow-y:auto; padding:20px 22px; }
+.slide-panel-footer { padding:14px 22px; border-top:1px solid var(--border); flex-shrink:0; }
+.panel-overlay { position:fixed; inset:0; background:rgba(15,23,42,0.35); z-index:199;
+  display:none; backdrop-filter:blur(2px); }
+.panel-overlay.open { display:block; }
+
+/* Chat window */
+.chat-messages { display:flex; flex-direction:column; gap:8px; padding:16px; min-height:200px; }
+.msg-bubble { max-width:75%; padding:9px 13px; border-radius:16px; font-size:13.5px; line-height:1.5; }
+.msg-customer { background:var(--surface-2); color:var(--text); border-bottom-left-radius:4px; align-self:flex-start; }
+.msg-merchant { background:linear-gradient(135deg,var(--primary-dark),var(--violet)); color:#fff; border-bottom-right-radius:4px; align-self:flex-end; }
+.msg-time { font-size:10.5px; color:var(--text-4); margin-top:2px; }
+
+/* Label printed badge */
+.label-ok { display:inline-flex; align-items:center; gap:4px; font-size:11px; color:var(--success); }
+
+/* Settings */
+.platform-card { border:2px solid var(--border); border-radius:var(--radius-lg); padding:16px 18px; cursor:pointer; transition:all 0.15s; }
+.platform-card:hover,.platform-card.selected { border-color:var(--primary); background:var(--primary-dim); }
+.platform-logo { font-size:26px; margin-bottom:6px; }
+.platform-name { font-size:13px; font-weight:700; color:var(--text); }
+.platform-desc { font-size:11.5px; color:var(--text-3); margin-top:2px; }
+
+.store-badge { display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border-radius:var(--radius-full);
+  border:1px solid var(--border); background:var(--surface); font-size:12.5px; font-weight:600; }
+
+@media(max-width:600px){
+  .slide-panel { width:100%; }
+  .stats-4 { grid-template-columns:1fr 1fr; }
+}
+</style>
+` }) %>
+
+<%
+  const activeTab = (typeof query !== 'undefined' && query.tab) || (filters && filters.tab) || 'orders'
+  const urlParams = new URLSearchParams()
+  const statusLabel = {
+    pending:'รอดำเนินการ', confirmed:'ยืนยันแล้ว', packing:'กำลังแพ็ค',
+    packed:'แพ็คแล้ว', shipped:'จัดส่งแล้ว', delivered:'ส่งถึงแล้ว',
+    cancelled:'ยกเลิก', returned:'คืนสินค้า', manual:'สร้างเอง'
+  }
+  const statusClass = {
+    pending:'badge-warning', confirmed:'badge-info', packing:'badge-info',
+    packed:'badge-primary', shipped:'badge-primary', delivered:'badge-success',
+    cancelled:'badge-danger', returned:'badge-danger'
+  }
+  const platformIcon = { line_shopping:'🛍️', myshop:'🏪', shopee:'🔶', lazada:'🔷', tiktok:'🎵', manual:'✏️' }
+  const platformLabel = { line_shopping:'LINE Shopping', myshop:'MyShop', shopee:'Shopee', lazada:'Lazada', tiktok:'TikTok Shop', manual:'สร้างเอง' }
+%>
+
+<div class="page-header">
+  <div>
+    <h1>🛒 อีคอมเมิร์ซ</h1>
+    <p>จัดการออเดอร์, สินค้า, แชท และเชื่อมต่อร้านค้าออนไลน์</p>
+  </div>
+  <div class="page-header-actions">
+    <% stores.forEach(s => { %>
+    <form action="/ecommerce/sync/<%= s.id %>" method="POST" style="margin:0;">
+      <button type="submit" class="btn btn-secondary btn-sm">⟳ ซิงค์ <%= s.store_name %></button>
+    </form>
+    <% }) %>
+    <button class="btn btn-primary" onclick="openModal('addOrderModal')">+ เพิ่มออเดอร์</button>
+  </div>
+</div>
+
+<% if (success && success.length > 0) { %><div class="alert alert-success">✓ <%= success[0] %></div><% } %>
+<% if (error && error.length > 0) { %><div class="alert alert-error">⚠ <%= error[0] %></div><% } %>
+
+<!-- Stats -->
+<div class="stats-grid stats-4" style="margin-bottom:18px;">
+  <div class="stat-card">
+    <div class="stat-icon" style="background:#eef2ff;">📦</div>
+    <div class="stat-label">ออเดอร์ทั้งหมด</div>
+    <div class="stat-value"><%= stats.total %></div>
+    <div class="stat-sub">รายการ</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background:var(--warning-dim);">⏳</div>
+    <div class="stat-label">รอดำเนินการ</div>
+    <div class="stat-value" style="color:var(--warning);"><%= stats.pending %></div>
+    <div class="stat-sub">รายการ</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background:var(--info-dim);">🚚</div>
+    <div class="stat-label">จัดส่งแล้ว</div>
+    <div class="stat-value" style="color:var(--info);"><%= stats.shipped %></div>
+    <div class="stat-sub">รายการ</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background:var(--success-dim);">💰</div>
+    <div class="stat-label">ยอดรวม</div>
+    <div class="stat-value" style="font-size:20px;color:var(--success);">฿<%= stats.revenue.toLocaleString('th-TH',{minimumFractionDigits:0}) %></div>
+    <div class="stat-sub">ออเดอร์ทั้งหมด</div>
+  </div>
+</div>
+
+<!-- Tab Bar -->
+<div class="tab-bar">
+  <button class="tab-btn <%= activeTab === 'orders' ? 'active' : '' %>" onclick="switchTab('orders')">📦 ออเดอร์</button>
+  <button class="tab-btn <%= activeTab === 'chat' ? 'active' : '' %>" onclick="switchTab('chat')">💬 แชท<% if(chats.filter(c=>c.unread_count>0).length > 0) { %> <span style="display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;background:var(--danger);color:#fff;font-size:10px;border-radius:100px;margin-left:4px;padding:0 3px;"><%= chats.filter(c=>c.unread_count>0).length %></span><% } %></button>
+  <button class="tab-btn <%= activeTab === 'settings' ? 'active' : '' %>" onclick="switchTab('settings')">⚙️ ตั้งค่าร้าน</button>
+</div>
+
+<!-- ═══════════════ TAB: ORDERS ═══════════════ -->
+<div id="tab-orders" class="tab-pane" style="display:<%= activeTab==='orders'?'block':'none' %>">
+  <!-- Filter by status -->
+  <div class="status-tabs">
+    <a class="stab <%= !filters.status ? 'active' : '' %>" href="/ecommerce">ทั้งหมด <span class="cnt"><%= stats.total %></span></a>
+    <a class="stab <%= filters.status==='pending' ? 'active' : '' %>" href="/ecommerce?status=pending">รอดำเนินการ <span class="cnt"><%= stats.pending %></span></a>
+    <a class="stab <%= filters.status==='confirmed' ? 'active' : '' %>" href="/ecommerce?status=confirmed">ยืนยันแล้ว</a>
+    <a class="stab <%= filters.status==='packing'||filters.status==='packed' ? 'active' : '' %>" href="/ecommerce?status=packing">กำลังแพ็ค <span class="cnt"><%= stats.packing %></span></a>
+    <a class="stab <%= filters.status==='shipped' ? 'active' : '' %>" href="/ecommerce?status=shipped">จัดส่งแล้ว <span class="cnt"><%= stats.shipped %></span></a>
+    <a class="stab <%= filters.status==='delivered' ? 'active' : '' %>" href="/ecommerce?status=delivered">ส่งถึงแล้ว <span class="cnt"><%= stats.delivered %></span></a>
+    <a class="stab <%= filters.status==='cancelled' ? 'active' : '' %>" href="/ecommerce?status=cancelled">ยกเลิก</a>
+  </div>
+
+  <!-- Search + Filter bar -->
+  <div style="display:flex;gap:10px;margin-bottom:16px;align-items:center;flex-wrap:wrap;">
+    <form method="GET" action="/ecommerce" style="display:flex;gap:10px;flex:1;min-width:200px;">
+      <input type="hidden" name="status" value="<%= filters.status || '' %>">
+      <div class="search-wrap" style="flex:1;">
+        <span class="search-icon">🔍</span>
+        <input type="text" name="q" class="search-input" placeholder="ค้นหาชื่อลูกค้า, เลขออเดอร์, tracking..." value="<%= filters.q || '' %>">
+      </div>
+      <% if (stores.length > 1) { %>
+      <select name="store_id" class="form-control" style="width:auto;padding:8px 12px;border-radius:var(--radius-full);">
+        <option value="">ทุกร้าน</option>
+        <% stores.forEach(s => { %><option value="<%= s.id %>" <%= filters.store_id===s.id?'selected':'' %>><%= s.store_name %></option><% }) %>
+      </select>
+      <% } %>
+      <button type="submit" class="btn btn-secondary btn-sm">ค้นหา</button>
+    </form>
+  </div>
+
+  <!-- Orders list -->
+  <% if (orders.length === 0) { %>
+  <div class="empty-state card">
+    <div class="empty-icon">📭</div>
+    <div class="empty-title">ยังไม่มีออเดอร์</div>
+    <div class="empty-desc">เชื่อมต่อร้านค้าเพื่อดึงออเดอร์ หรือ <a href="#" onclick="openModal('addOrderModal')" style="color:var(--primary)">+ เพิ่มออเดอร์ด้วยตนเอง</a></div>
+  </div>
+  <% } else { %>
+  <div id="ordersList">
+    <% orders.forEach(order => {
+      const itemsText = order.items && order.items.length > 0
+        ? order.items.map(i => `${i.product_name}${i.variant?' ('+i.variant+')':''} x${i.qty}`).join(', ')
+        : 'ไม่มีรายการสินค้า'
+    %>
+    <div class="order-card" onclick="openOrderPanel('<%= order.id %>')">
+      <div class="order-card-left">
+        <div class="order-no">
+          <%= platformIcon[order.platform] || '📦' %> <%= platformLabel[order.platform] || order.platform %>
+          <% if (order.platform_order_id) { %> · #<%= order.platform_order_id %><% } %>
+          <% if (order.store) { %> · <%= order.store.store_name %><% } %>
+        </div>
+        <div class="order-customer"><%= order.customer_name || 'ลูกค้า' %></div>
+        <div class="order-items-preview"><%= itemsText %></div>
+        <div class="order-meta">
+          <% if (order.customer_phone) { %><span class="order-meta-item">📞 <%= order.customer_phone %></span><% } %>
+          <% if (order.tracking_no) { %><span class="order-meta-item" style="color:var(--success);">🚚 <%= order.tracking_no %></span><% } %>
+          <% if (order.shipping_provider) { %><span class="order-meta-item">📮 <%= order.shipping_provider %></span><% } %>
+          <span class="order-meta-item">🕐 <%= new Date(order.ordered_at).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'}) %></span>
+          <% if (order.label_printed) { %><span class="label-ok">✓ ปริ้นLabel แล้ว</span><% } %>
+        </div>
+      </div>
+      <div class="order-card-right">
+        <span class="badge <%= statusClass[order.status] || 'badge-gray' %>"><%= statusLabel[order.status] || order.status %></span>
+        <div class="order-total">฿<%= (parseFloat(order.total)||0).toLocaleString('th-TH',{minimumFractionDigits:0}) %></div>
+        <div style="display:flex;gap:6px;" onclick="event.stopPropagation()">
+          <a href="/ecommerce/orders/<%= order.id %>/label" target="_blank" class="btn btn-secondary btn-xs">🏷️ Label</a>
+          <form action="/ecommerce/orders/<%= order.id %>?_method=DELETE" method="POST" onsubmit="return confirm('ลบออเดอร์นี้?')">
+            <button type="submit" class="btn btn-danger btn-xs">ลบ</button>
+          </form>
+        </div>
+      </div>
+    </div>
+    <% }) %>
+  </div>
+  <% } %>
+</div>
+
+<!-- ═══════════════ TAB: CHAT ═══════════════ -->
+<div id="tab-chat" class="tab-pane" style="display:<%= activeTab==='chat'?'block':'none' %>">
+  <% if (chats.length === 0) { %>
+  <div class="card">
+    <div class="empty-state">
+      <div class="empty-icon">💬</div>
+      <div class="empty-title">ยังไม่มีแชท</div>
+      <div class="empty-desc">เชื่อมต่อ LINE OA และตั้งค่า Webhook เพื่อรับแชท</div>
+    </div>
+  </div>
+  <% } else { %>
+  <div class="card">
+    <div class="card-body" style="padding:8px;">
+      <div class="chat-list">
+        <% chats.forEach(chat => { %>
+        <div class="chat-item" onclick="openChatPanel('<%= chat.id %>', '<%= (chat.customer_name||'ลูกค้า').replace(/'/g,"\\'") %>')">
+          <div class="chat-avatar"><%= (chat.customer_name||'?')[0].toUpperCase() %></div>
+          <div class="chat-info">
+            <div class="chat-name"><%= chat.customer_name || 'ลูกค้า' %></div>
+            <div class="chat-preview"><%= chat.last_message || '...' %></div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+            <div class="chat-time"><%= chat.last_message_at ? new Date(chat.last_message_at).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}) : '' %></div>
+            <% if (chat.unread_count > 0) { %><div class="chat-unread"><%= chat.unread_count %></div><% } %>
+          </div>
+        </div>
+        <% }) %>
+      </div>
+    </div>
+  </div>
+  <% } %>
+</div>
+
+<!-- ═══════════════ TAB: SETTINGS ═══════════════ -->
+<div id="tab-settings" class="tab-pane" style="display:<%= activeTab==='settings'?'block':'none' %>">
+  <!-- Connected stores -->
+  <% if (stores.length > 0) { %>
+  <div class="card" style="margin-bottom:20px;">
+    <div class="card-header"><span class="card-title">ร้านค้าที่เชื่อมต่อแล้ว</span></div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>ร้านค้า</th><th>แพลตฟอร์ม</th><th>ผู้ส่ง</th><th>Webhook URL</th><th>สถานะ</th><th>ซิงค์ล่าสุด</th><th>จัดการ</th></tr></thead>
+        <tbody>
+          <% stores.forEach(s => { %>
+          <tr>
+            <td><strong><%= s.store_name %></strong></td>
+            <td><span class="store-badge"><%= platformIcon[s.platform] || '🏪' %> <%= platformLabel[s.platform] || s.platform %></span></td>
+            <td style="font-size:12.5px;"><%= s.sender_name || '-' %></td>
+            <td style="font-size:11px;color:var(--text-4);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+              <span id="wh-<%= s.id %>"><%= process.env.APP_URL || 'https://your-domain.com' %>/ecommerce/webhook/<%= s.id %></span>
+              <button onclick="copyText('wh-<%= s.id %>')" class="btn btn-secondary btn-xs" style="margin-left:4px;">คัดลอก</button>
+            </td>
+            <td><span class="badge <%= s.is_active ? 'badge-success' : 'badge-gray' %>"><%= s.is_active ? 'เปิดใช้' : 'ปิด' %></span></td>
+            <td style="font-size:12px;color:var(--text-4);"><%= s.last_sync_at ? new Date(s.last_sync_at).toLocaleString('th-TH') : 'ยังไม่ได้ซิงค์' %></td>
+            <td>
+              <div style="display:flex;gap:6px;">
+                <button class="btn btn-secondary btn-xs"
+                  data-id="<%= s.id %>"
+                  data-name="<%= s.store_name %>"
+                  data-platform="<%= s.platform %>"
+                  data-channel-id="<%= s.channel_id||'' %>"
+                  data-access-token="<%= s.access_token ? '••••••' : '' %>"
+                  data-sender-name="<%= s.sender_name||'' %>"
+                  data-sender-phone="<%= s.sender_phone||'' %>"
+                  data-sender-address="<%= s.sender_address||'' %>"
+                  onclick="openEditStoreBtn(this)">แก้ไข</button>
+                <form action="/ecommerce/stores/<%= s.id %>?_method=DELETE" method="POST" style="margin:0;" onsubmit="return confirm('ลบร้านค้านี้?')">
+                  <button type="submit" class="btn btn-danger btn-xs">ลบ</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <% } %>
+
+  <!-- Add new store -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">➕ เชื่อมต่อร้านค้าใหม่</span></div>
+    <div class="card-body">
+      <form action="/ecommerce/stores" method="POST">
+        <div class="form-row form-row-2" style="margin-bottom:16px;">
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">ชื่อร้านค้า *</label>
+            <input type="text" name="store_name" class="form-control" placeholder="ชื่อร้านของคุณ" required>
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">แพลตฟอร์ม *</label>
+            <select name="platform" class="form-control" id="platformSelect" onchange="showPlatformFields()">
+              <option value="line_shopping">🛍️ LINE Shopping</option>
+              <option value="myshop">🏪 MyShop (LINE)</option>
+              <option value="shopee">🔶 Shopee</option>
+              <option value="lazada">🔷 Lazada</option>
+              <option value="tiktok">🎵 TikTok Shop</option>
+              <option value="manual">✏️ สร้างเอง (ไม่ต้อง API)</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="apiFields">
+          <div class="form-row form-row-2" style="margin-bottom:12px;">
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Channel ID / Shop ID</label>
+              <input type="text" name="channel_id" class="form-control" placeholder="Channel ID">
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Channel Secret</label>
+              <input type="password" name="channel_secret" class="form-control" placeholder="Channel Secret">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Access Token / API Key</label>
+            <input type="password" name="access_token" class="form-control" placeholder="Channel Access Token (Long-lived)">
+            <div class="form-hint">สำหรับ LINE: ใช้ Long-lived Channel Access Token จาก LINE Developers Console</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Webhook Secret (ไม่บังคับ)</label>
+            <input type="text" name="webhook_secret" class="form-control" placeholder="Webhook secret สำหรับยืนยัน signature">
+          </div>
+        </div>
+
+        <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
+        <p style="font-size:13px;font-weight:700;color:var(--text-2);margin-bottom:14px;">📍 ที่อยู่ผู้ส่ง (ใช้พิมพ์ใบ Label)</p>
+        <div class="form-row form-row-2" style="margin-bottom:12px;">
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">ชื่อผู้ส่ง</label>
+            <input type="text" name="sender_name" class="form-control" placeholder="ชื่อร้าน / บริษัท">
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">เบอร์โทรผู้ส่ง</label>
+            <input type="text" name="sender_phone" class="form-control" placeholder="0XX-XXX-XXXX">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">ที่อยู่ผู้ส่ง</label>
+          <textarea name="sender_address" class="form-control" rows="2" placeholder="ที่อยู่ร้านค้า / โกดัง"></textarea>
+        </div>
+
+        <div style="text-align:right;margin-top:8px;">
+          <button type="submit" class="btn btn-primary">เชื่อมต่อร้านค้า</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- LINE API Notice -->
+  <div class="card" style="margin-top:16px;border-color:var(--warning);background:var(--warning-dim);">
+    <div class="card-body" style="font-size:13px;color:#92400e;">
+      <strong>⚠️ LINE Shopping Merchant API</strong> ต้องสมัครเป็น LINE Certified Partner ก่อน (ไม่ใช่ API สาธารณะ)<br>
+      สำหรับร้านค้าทั่วไป ใช้ <strong>2 วิธีนี้แทน:</strong>
+      <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:200px;background:#fff;border-radius:8px;padding:10px 14px;border:1px solid var(--border);">
+          <div style="font-weight:700;margin-bottom:4px;">✅ วิธีที่ 1: Webhook (แนะนำ)</div>
+          <div style="color:var(--text-3);font-size:12.5px;">ลูกค้าส่งออเดอร์มาทาง LINE OA Chat → ระบบรับอัตโนมัติ ไม่ต้อง sync</div>
+        </div>
+        <div style="flex:1;min-width:200px;background:#fff;border-radius:8px;padding:10px 14px;border:1px solid var(--border);">
+          <div style="font-weight:700;margin-bottom:4px;">📥 วิธีที่ 2: Import CSV</div>
+          <div style="color:var(--text-3);font-size:12.5px;">Export ออเดอร์จาก LINE Shopping Seller Center → Import ขึ้น BizFlow</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Verify LINE Token -->
+  <% if (stores.length > 0) { %>
+  <div class="card" style="margin-top:16px;">
+    <div class="card-header"><span class="card-title">🔑 ทดสอบการเชื่อมต่อ LINE OA</span></div>
+    <div class="card-body">
+      <% stores.filter(s => s.access_token).forEach(s => { %>
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border-2);">
+        <span style="font-weight:600;flex:1;"><%= s.store_name %></span>
+        <button class="btn btn-secondary btn-sm" onclick="verifyToken('<%= s.id %>', this)">
+          🔍 ทดสอบ Token
+        </button>
+        <span id="verify-<%= s.id %>" style="font-size:12.5px;color:var(--text-4);"></span>
+      </div>
+      <% }) %>
+    </div>
+  </div>
+  <% } %>
+
+  <!-- Import CSV -->
+  <div class="card" style="margin-top:16px;">
+    <div class="card-header">
+      <span class="card-title">📥 Import ออเดอร์จาก CSV</span>
+      <span style="font-size:12px;color:var(--text-4);">LINE Shopping Seller Center → ออเดอร์ → Export</span>
+    </div>
+    <div class="card-body">
+      <form action="/ecommerce/import-csv/<%= stores[0] ? stores[0].id : 'default' %>" method="POST" id="csvImportForm">
+        <% if (stores.length > 1) { %>
+        <div class="form-group">
+          <label class="form-label">ร้านค้า</label>
+          <select name="store_id" class="form-control" onchange="document.getElementById('csvImportForm').action='/ecommerce/import-csv/'+this.value">
+            <% stores.forEach(s => { %><option value="<%= s.id %>"><%= s.store_name %></option><% }) %>
+          </select>
+        </div>
+        <% } %>
+        <div class="form-group">
+          <label class="form-label">วาง CSV ที่นี่</label>
+          <textarea name="csv_data" class="form-control" rows="6"
+            placeholder="วาง CSV content ที่ copy มาจาก Excel หรือ LINE Shopping Seller Center&#10;รองรับคอลัมน์: Order ID, Status, Recipient Name, Phone, Address, Province, Zip, Carrier, Tracking, Total, Shipping Fee, Date"></textarea>
+          <div class="form-hint">เปิดไฟล์ CSV ด้วย Excel/Notepad → Select All → Copy → วางที่นี่ / หรือ drag &amp; drop ไฟล์</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button type="submit" class="btn btn-primary btn-sm">📥 Import ออเดอร์</button>
+          <label class="btn btn-secondary btn-sm" style="cursor:pointer;">
+            📂 เลือกไฟล์ .csv
+            <input type="file" accept=".csv,.txt" style="display:none;" onchange="readCSVFile(this)">
+          </label>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- How to setup LINE -->
+  <div class="card" style="margin-top:16px;">
+    <div class="card-header"><span class="card-title">📖 วิธีเชื่อมต่อ LINE OA กับ BizFlow</span></div>
+    <div class="card-body" style="font-size:13.5px;line-height:1.9;color:var(--text-2);">
+      <ol style="padding-left:18px;">
+        <li>สมัคร LINE Official Account ที่ <a href="https://manager.line.biz" target="_blank" style="color:var(--primary);">manager.line.biz</a></li>
+        <li>ไปที่ <a href="https://developers.line.biz" target="_blank" style="color:var(--primary);">developers.line.biz</a> → Create Provider → Create channel → <strong>Messaging API</strong></li>
+        <li>แท็บ <strong>Messaging API</strong> → คัดลอก Channel ID, Channel Secret และ Issue Long-lived Access Token</li>
+        <li>กรอกข้อมูลในฟอร์มด้านบน → เชื่อมต่อร้านค้า</li>
+        <li>คัดลอก <strong>Webhook URL</strong> ไปใส่ใน LINE Developers → เปิด <strong>Use webhook: ON</strong></li>
+        <li>กด <strong>🔍 ทดสอบ Token</strong> เพื่อตรวจสอบว่าเชื่อมต่อถูกต้อง</li>
+        <li>ปิด Auto-reply ใน LINE OA Manager เพื่อให้ตอบเองผ่าน BizFlow</li>
+      </ol>
+      <div style="margin-top:12px;padding:10px 14px;background:var(--info-dim);border-radius:8px;font-size:12.5px;color:var(--info);">
+        💡 <strong>ต้องการ HTTPS:</strong> LINE Webhook ต้องใช้ public HTTPS URL — ใช้ <strong>ngrok</strong> ระหว่าง dev หรือ deploy ไปที่ <strong>stdesignlp.com</strong>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ Slide panel: Order Detail ═══════ -->
+<div class="panel-overlay" id="panelOverlay" onclick="closePanel()"></div>
+<div class="slide-panel" id="orderPanel">
+  <div class="slide-panel-header">
+    <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;font-weight:700;" id="panelTitle">รายละเอียดออเดอร์</div>
+    <button class="modal-close" onclick="closePanel()">×</button>
+  </div>
+  <div class="slide-panel-body" id="panelBody">
+    <div style="text-align:center;padding:40px;color:var(--text-4);">กำลังโหลด...</div>
+  </div>
+  <div class="slide-panel-footer" id="panelFooter"></div>
+</div>
+
+<!-- ═══════ Slide panel: Chat ═══════ -->
+<div class="slide-panel" id="chatPanel" style="width:520px;">
+  <div class="slide-panel-header">
+    <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;font-weight:700;" id="chatPanelTitle">แชท</div>
+    <button class="modal-close" onclick="closeChatPanel()">×</button>
+  </div>
+  <div class="slide-panel-body" id="chatMessages" style="padding:0;"></div>
+  <div class="slide-panel-footer">
+    <div style="display:flex;gap:8px;" id="chatReplyBox">
+      <input type="text" class="form-control" id="chatReplyInput" placeholder="พิมพ์ข้อความ..." onkeydown="if(event.key==='Enter')sendReply()">
+      <button class="btn btn-primary" onclick="sendReply()">ส่ง</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ Modal: Add Order ═══════ -->
+<div class="modal-overlay" id="addOrderModal">
+  <div class="modal-box modal-box-lg">
+    <div class="modal-header">
+      <div class="modal-title">+ เพิ่มออเดอร์ใหม่</div>
+      <button class="modal-close" onclick="closeModal('addOrderModal')">×</button>
+    </div>
+    <form action="/ecommerce/orders" method="POST">
+      <div class="modal-body">
+        <div class="form-row form-row-2">
+          <div class="form-group">
+            <label class="form-label">ชื่อลูกค้า *</label>
+            <input type="text" name="customer_name" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">เบอร์โทร</label>
+            <input type="text" name="customer_phone" class="form-control">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">ที่อยู่จัดส่ง</label>
+          <textarea name="customer_address" class="form-control" rows="2"></textarea>
+        </div>
+        <div class="form-row form-row-3">
+          <div class="form-group">
+            <label class="form-label">แขวง/ตำบล</label>
+            <input type="text" name="customer_district" class="form-control">
+          </div>
+          <div class="form-group">
+            <label class="form-label">จังหวัด</label>
+            <input type="text" name="customer_province" class="form-control">
+          </div>
+          <div class="form-group">
+            <label class="form-label">รหัสไปรษณีย์</label>
+            <input type="text" name="customer_postal_code" class="form-control">
+          </div>
+        </div>
+        <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px;">สินค้า</div>
+        <div id="orderItemsWrap">
+          <div class="order-item-row" style="display:grid;grid-template-columns:1fr 100px 110px auto;gap:8px;margin-bottom:8px;align-items:center;">
+            <input type="text" name="items[0][product_name]" class="form-control" placeholder="ชื่อสินค้า" style="font-size:13px;">
+            <input type="number" name="items[0][qty]" class="form-control" placeholder="จำนวน" value="1" min="1" style="font-size:13px;">
+            <input type="number" name="items[0][unit_price]" class="form-control" placeholder="ราคา" step="0.01" style="font-size:13px;">
+            <button type="button" class="btn btn-danger btn-xs" onclick="this.closest('.order-item-row').remove()">ลบ</button>
+          </div>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="addItemRow()">+ เพิ่มสินค้า</button>
+        <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
+        <div class="form-row form-row-3">
+          <div class="form-group">
+            <label class="form-label">ขนส่ง</label>
+            <select name="shipping_provider" class="form-control">
+              <option>ไปรษณีย์ไทย</option><option>Kerry</option><option>Flash</option>
+              <option>J&T</option><option>Ninja Van</option><option>DHL</option><option>SCG</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">ค่าส่ง (บาท)</label>
+            <input type="number" name="shipping_fee" class="form-control" value="0" step="0.01">
+          </div>
+          <div class="form-group">
+            <label class="form-label">ชำระเงิน</label>
+            <select name="payment_method" class="form-control">
+              <option value="cod">COD (เก็บปลายทาง)</option>
+              <option value="transfer">โอนเงิน</option>
+              <option value="credit_card">บัตรเครดิต</option>
+            </select>
+          </div>
+        </div>
+        <% if (stores.length > 0) { %>
+        <div class="form-group">
+          <label class="form-label">ร้านค้า</label>
+          <select name="store_id" class="form-control">
+            <option value="">เลือกร้านค้า</option>
+            <% stores.forEach(s => { %><option value="<%= s.id %>"><%= s.store_name %></option><% }) %>
+          </select>
+        </div>
+        <% } %>
+        <div class="form-group">
+          <label class="form-label">หมายเหตุ</label>
+          <input type="text" name="notes" class="form-control" placeholder="หมายเหตุเพิ่มเติม">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('addOrderModal')">ยกเลิก</button>
+        <button type="submit" class="btn btn-primary">บันทึกออเดอร์</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ═══════ Modal: Edit Store ═══════ -->
+<div class="modal-overlay" id="editStoreModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title">แก้ไขร้านค้า</div>
+      <button class="modal-close" onclick="closeModal('editStoreModal')">×</button>
+    </div>
+    <form id="editStoreForm" method="POST">
+      <input type="hidden" name="_method" value="PUT">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">ชื่อร้านค้า</label>
+          <input type="text" name="store_name" id="es_store_name" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Channel ID</label>
+          <input type="text" name="channel_id" id="es_channel_id" class="form-control">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Access Token</label>
+          <input type="password" name="access_token" id="es_access_token" class="form-control">
+        </div>
+        <div class="form-group">
+          <label class="form-label">ชื่อผู้ส่ง</label>
+          <input type="text" name="sender_name" id="es_sender_name" class="form-control">
+        </div>
+        <div class="form-group">
+          <label class="form-label">เบอร์โทรผู้ส่ง</label>
+          <input type="text" name="sender_phone" id="es_sender_phone" class="form-control">
+        </div>
+        <div class="form-group">
+          <label class="form-label">ที่อยู่ผู้ส่ง</label>
+          <textarea name="sender_address" id="es_sender_address" class="form-control" rows="2"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">สถานะ</label>
+          <select name="is_active" class="form-control">
+            <option value="true">เปิดใช้งาน</option>
+            <option value="false">ปิด</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('editStoreModal')">ยกเลิก</button>
+        <button type="submit" class="btn btn-primary">บันทึก</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+// Tab switching
+function switchTab(name) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.style.display = 'none')
+  document.getElementById('tab-' + name).style.display = 'block'
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'))
+  event.target.classList.add('active')
+  history.replaceState(null, '', '/ecommerce?tab=' + name)
+}
+
+// Modals
+function openModal(id) {
+  const m = document.getElementById(id)
+  m.style.display = 'flex'
+  setTimeout(() => m.classList.add('active'), 10)
+}
+function closeModal(id) {
+  const m = document.getElementById(id)
+  m.classList.remove('active')
+  setTimeout(() => m.style.display = 'none', 250)
+}
+document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', e => { if (e.target === m) closeModal(m.id) }))
+
+// Order slide panel
+let currentOrderId = null
+async function openOrderPanel(id) {
+  currentOrderId = id
+  document.getElementById('panelOverlay').classList.add('open')
+  document.getElementById('orderPanel').classList.add('open')
+  document.getElementById('panelBody').innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-4);">กำลังโหลด...</div>'
+
+  const order = await fetch('/ecommerce/api/orders/' + id).then(r => r.json())
+  if (!order) { document.getElementById('panelBody').innerHTML = '<div class="empty-state">ไม่พบออเดอร์</div>'; return }
+
+  const statusOpts = ['pending','confirmed','packing','packed','shipped','delivered','cancelled','returned']
+  const statusLabel = {pending:'รอดำเนินการ',confirmed:'ยืนยันแล้ว',packing:'กำลังแพ็ค',packed:'แพ็คแล้ว',shipped:'จัดส่งแล้ว',delivered:'ส่งถึงแล้ว',cancelled:'ยกเลิก',returned:'คืนสินค้า'}
+  const carriers = ['ไปรษณีย์ไทย','Kerry','Flash','J&T','Ninja Van','DHL','SCG']
+
+  document.getElementById('panelTitle').textContent = 'ออเดอร์: ' + (order.customer_name || 'ลูกค้า')
+  document.getElementById('panelBody').innerHTML = `
+    <div style="display:grid;gap:14px;">
+      <div class="card" style="padding:16px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text-4);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">ข้อมูลลูกค้า</div>
+        <div style="font-size:14px;font-weight:700;">${order.customer_name || '-'}</div>
+        <div style="font-size:13px;color:var(--text-3);margin-top:4px;">📞 ${order.customer_phone || '-'}</div>
+        <div style="font-size:13px;color:var(--text-3);margin-top:4px;">📍 ${[order.customer_address, order.customer_district, order.customer_province, order.customer_postal_code].filter(Boolean).join(' ')}</div>
+      </div>
+
+      <div class="card" style="padding:16px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text-4);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">สินค้า</div>
+        ${(order.items || []).map(i => `
+          <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border-2);font-size:13.5px;">
+            <span>${i.product_name}${i.variant?' <span style="color:var(--text-4);font-size:12px;">('+i.variant+')</span>':''} × ${i.qty}</span>
+            <span style="font-weight:700;">฿${((i.line_total||0)).toLocaleString('th-TH',{minimumFractionDigits:0})}</span>
+          </div>`).join('')}
+        <div style="display:flex;justify-content:space-between;margin-top:10px;font-size:13px;color:var(--text-3);">
+          <span>ค่าส่ง (${order.shipping_provider || '-'})</span>
+          <span>฿${(parseFloat(order.shipping_fee)||0).toLocaleString('th-TH',{minimumFractionDigits:0})}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:16px;font-weight:800;font-family:'Plus Jakarta Sans',sans-serif;">
+          <span>รวมทั้งหมด</span>
+          <span style="color:var(--primary);">฿${(parseFloat(order.total)||0).toLocaleString('th-TH',{minimumFractionDigits:0})}</span>
+        </div>
+      </div>
+
+      <form action="/ecommerce/orders/${id}/update" method="POST" class="card" style="padding:16px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text-4);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;">อัปเดตออเดอร์</div>
+        <div class="form-row form-row-2">
+          <div class="form-group" style="margin-bottom:12px;">
+            <label class="form-label">สถานะ</label>
+            <select name="status" class="form-control">
+              ${statusOpts.map(s => `<option value="${s}" ${order.status===s?'selected':''}>${statusLabel[s]||s}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:12px;">
+            <label class="form-label">บริษัทขนส่ง</label>
+            <select name="shipping_provider" class="form-control">
+              ${carriers.map(c => `<option ${order.shipping_provider===c?'selected':''}>${c}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:12px;">
+          <label class="form-label">เลข Tracking</label>
+          <input type="text" name="tracking_no" class="form-control" value="${order.tracking_no || ''}" placeholder="กรอกเลข tracking...">
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">หมายเหตุ</label>
+          <input type="text" name="notes" class="form-control" value="${order.notes || ''}" placeholder="หมายเหตุ...">
+        </div>
+        <div style="display:flex;gap:8px;margin-top:14px;">
+          <button type="submit" class="btn btn-primary btn-sm">บันทึก</button>
+          <a href="/ecommerce/orders/${id}/label" target="_blank" class="btn btn-secondary btn-sm">🏷️ พิมพ์ Label</a>
+        </div>
+      </form>
+    </div>`
+}
+
+function closePanel() {
+  document.getElementById('panelOverlay').classList.remove('open')
+  document.getElementById('orderPanel').classList.remove('open')
+  document.getElementById('chatPanel').classList.remove('open')
+}
+
+// Chat panel
+let currentChatId = null
+async function openChatPanel(id, name) {
+  currentChatId = id
+  document.getElementById('panelOverlay').classList.add('open')
+  document.getElementById('chatPanel').classList.add('open')
+  document.getElementById('chatPanelTitle').textContent = '💬 ' + name
+
+  const msgs = await fetch('/ecommerce/api/chat/' + id + '/messages').then(r => r.json())
+  const msgsHtml = msgs.length === 0
+    ? '<div style="text-align:center;padding:30px;color:var(--text-4);">ยังไม่มีข้อความ</div>'
+    : '<div class="chat-messages">' + msgs.map(m => `
+      <div style="display:flex;flex-direction:column;align-items:${m.sender_type==='merchant'?'flex-end':'flex-start'};">
+        <div class="msg-bubble msg-${m.sender_type}">${escHtml(m.message || '')}</div>
+        <div class="msg-time">${new Date(m.sent_at).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}</div>
+      </div>`).join('') + '</div>'
+  document.getElementById('chatMessages').innerHTML = msgsHtml
+  document.getElementById('chatMessages').scrollTop = 99999
+}
+function closeChatPanel() {
+  document.getElementById('panelOverlay').classList.remove('open')
+  document.getElementById('chatPanel').classList.remove('open')
+}
+
+async function sendReply() {
+  const input = document.getElementById('chatReplyInput')
+  const msg = input.value.trim()
+  if (!msg || !currentChatId) return
+  input.value = ''
+  await fetch('/ecommerce/chat/' + currentChatId + '/reply', {
+    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ message: msg })
+  })
+  openChatPanel(currentChatId, document.getElementById('chatPanelTitle').textContent.replace('💬 ', ''))
+}
+
+// Edit store modal
+function openEditStoreBtn(btn) {
+  const d = btn.dataset
+  openEditStore(d.id, d.name, d.platform, d.channelId, d.accessToken, d.senderName, d.senderPhone, d.senderAddress)
+}
+function openEditStore(id, name, platform, channelId, accessToken, senderName, senderPhone, senderAddress) {
+  document.getElementById('editStoreForm').action = '/ecommerce/stores/' + id
+  document.getElementById('es_store_name').value = name
+  document.getElementById('es_channel_id').value = channelId
+  document.getElementById('es_access_token').value = accessToken
+  document.getElementById('es_sender_name').value = senderName
+  document.getElementById('es_sender_phone').value = senderPhone
+  document.getElementById('es_sender_address').value = senderAddress
+  openModal('editStoreModal')
+}
+
+// Add item row
+let itemIdx = 1
+function addItemRow() {
+  const wrap = document.getElementById('orderItemsWrap')
+  const div = document.createElement('div')
+  div.className = 'order-item-row'
+  div.style.cssText = 'display:grid;grid-template-columns:1fr 100px 110px auto;gap:8px;margin-bottom:8px;align-items:center;'
+  div.innerHTML = `
+    <input type="text" name="items[${itemIdx}][product_name]" class="form-control" placeholder="ชื่อสินค้า" style="font-size:13px;">
+    <input type="number" name="items[${itemIdx}][qty]" class="form-control" placeholder="จำนวน" value="1" min="1" style="font-size:13px;">
+    <input type="number" name="items[${itemIdx}][unit_price]" class="form-control" placeholder="ราคา" step="0.01" style="font-size:13px;">
+    <button type="button" class="btn btn-danger btn-xs" onclick="this.closest('.order-item-row').remove()">ลบ</button>`
+  wrap.appendChild(div)
+  itemIdx++
+}
+
+// Copy text
+function copyText(elId) {
+  const text = document.getElementById(elId).textContent
+  navigator.clipboard.writeText(text).then(() => alert('คัดลอกแล้ว: ' + text))
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+}
+
+// Show/hide API fields
+function showPlatformFields() {
+  const val = document.getElementById('platformSelect').value
+  document.getElementById('apiFields').style.display = val === 'manual' ? 'none' : 'block'
+}
+
+// Verify LINE token
+async function verifyToken(storeId, btn) {
+  const el = document.getElementById('verify-' + storeId)
+  btn.disabled = true
+  btn.textContent = 'กำลังตรวจสอบ...'
+  el.textContent = ''
+  try {
+    const r = await fetch('/ecommerce/api/verify-line/' + storeId).then(r => r.json())
+    if (r.ok) {
+      el.innerHTML = `<span style="color:var(--success);">✓ เชื่อมต่อสำเร็จ — ${escHtml(r.botName)}</span>`
+      btn.textContent = '✓ ผ่าน'
+    } else {
+      el.innerHTML = `<span style="color:var(--danger);">✗ ${escHtml(r.error)}</span>`
+      btn.textContent = '🔍 ทดสอบ Token'
+    }
+  } catch (e) {
+    el.innerHTML = `<span style="color:var(--danger);">✗ เชื่อมต่อ server ไม่ได้</span>`
+    btn.textContent = '🔍 ทดสอบ Token'
+  }
+  btn.disabled = false
+}
+
+// Read CSV file and fill textarea
+function readCSVFile(input) {
+  const file = input.files[0]
+  if (!file) return
+  const reader = new FileReader()
+  reader.onload = e => {
+    document.querySelector('[name="csv_data"]').value = e.target.result
+  }
+  reader.readAsText(file, 'UTF-8')
+}
+
+// Handle URL tab param
+const urlP = new URLSearchParams(location.search)
+if (urlP.get('tab') && urlP.get('tab') !== 'orders') {
+  const btn = document.querySelector(`.tab-btn:nth-child(${urlP.get('tab')==='chat'?2:3})`)
+  if (btn) { document.querySelectorAll('.tab-pane').forEach(p=>p.style.display='none'); document.getElementById('tab-'+urlP.get('tab')).style.display='block'; btn.classList.add('active'); }
+}
+</script>
+
+<%- include('../partials/footer') %>

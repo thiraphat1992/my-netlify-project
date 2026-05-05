@@ -1,0 +1,163 @@
+<%- include('../partials/header') %>
+
+<div class="page-header">
+  <div>
+    <h1><%= employee ? 'แก้ไขข้อมูลพนักงาน' : 'เพิ่มพนักงานใหม่' %></h1>
+    <p><%= employee ? employee.first_name + ' ' + employee.last_name : 'กรอกข้อมูลพนักงานให้ครบถ้วน' %></p>
+  </div>
+  <a href="/hr" class="btn btn-secondary">← กลับ</a>
+</div>
+
+<form action="<%= employee ? '/hr/employees/' + employee.id + '?_method=PUT' : '/hr/employees' %>" method="POST">
+  <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;align-items:start;">
+    <div style="display:flex;flex-direction:column;gap:20px;">
+      <!-- ข้อมูลส่วนตัว -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">👤 ข้อมูลส่วนตัว</span></div>
+        <div class="card-body">
+          <div class="form-row form-row-3">
+            <div class="form-group">
+              <label class="form-label">รหัสพนักงาน *</label>
+              <input type="text" name="code" class="form-control" value="<%= employee?.code || '' %>" required placeholder="EMP001">
+            </div>
+            <div class="form-group">
+              <label class="form-label">คำนำหน้า</label>
+              <select name="title" class="form-control">
+                <option value="">--</option>
+                <option value="นาย" <%= employee?.title === 'นาย' ? 'selected' : '' %>>นาย</option>
+                <option value="นาง" <%= employee?.title === 'นาง' ? 'selected' : '' %>>นาง</option>
+                <option value="นางสาว" <%= employee?.title === 'นางสาว' ? 'selected' : '' %>>นางสาว</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">ชื่อเล่น</label>
+              <input type="text" name="nickname" class="form-control" value="<%= employee?.nickname || '' %>" placeholder="ชื่อเล่น">
+            </div>
+          </div>
+          <div class="form-row form-row-2">
+            <div class="form-group">
+              <label class="form-label">ชื่อ *</label>
+              <input type="text" name="first_name" class="form-control" value="<%= employee?.first_name || '' %>" required placeholder="ชื่อจริง">
+            </div>
+            <div class="form-group">
+              <label class="form-label">นามสกุล *</label>
+              <input type="text" name="last_name" class="form-control" value="<%= employee?.last_name || '' %>" required placeholder="นามสกุล">
+            </div>
+          </div>
+          <div class="form-row form-row-3">
+            <div class="form-group">
+              <label class="form-label">เลขบัตรประชาชน</label>
+              <input type="text" name="national_id" class="form-control" value="<%= employee?.national_id || '' %>" placeholder="0000000000000">
+            </div>
+            <div class="form-group">
+              <label class="form-label">วันเกิด</label>
+              <input type="date" name="birth_date" class="form-control" value="<%= employee?.birth_date ? employee.birth_date.slice(0,10) : '' %>">
+            </div>
+            <div class="form-group">
+              <label class="form-label">เพศ</label>
+              <select name="gender" class="form-control">
+                <option value="">-- ไม่ระบุ --</option>
+                <option value="male" <%= employee?.gender === 'male' ? 'selected' : '' %>>ชาย</option>
+                <option value="female" <%= employee?.gender === 'female' ? 'selected' : '' %>>หญิง</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row form-row-2">
+            <div class="form-group">
+              <label class="form-label">โทรศัพท์</label>
+              <input type="text" name="phone" class="form-control" value="<%= employee?.phone || '' %>" placeholder="08X-XXX-XXXX">
+            </div>
+            <div class="form-group">
+              <label class="form-label">อีเมล</label>
+              <input type="email" name="email" class="form-control" value="<%= employee?.email || '' %>" placeholder="name@example.com">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">ที่อยู่</label>
+            <textarea name="address" class="form-control" rows="2" placeholder="บ้านเลขที่ ถนน แขวง เขต จังหวัด"><%= employee?.address || '' %></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- ข้อมูลการจ้างงาน -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">💼 ข้อมูลการจ้างงาน</span></div>
+        <div class="card-body">
+          <div class="form-row form-row-2">
+            <div class="form-group">
+              <label class="form-label">แผนก</label>
+              <select name="department_id" class="form-control">
+                <option value="">-- ไม่ระบุแผนก --</option>
+                <% departments.forEach(d => { %>
+                  <option value="<%= d.id %>" <%= employee?.department_id === d.id ? 'selected' : '' %>><%= d.name %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">ตำแหน่ง</label>
+              <input type="text" name="position" class="form-control" value="<%= employee?.position || '' %>" placeholder="เช่น นักบัญชี, พนักงานขาย">
+            </div>
+          </div>
+          <div class="form-row form-row-3">
+            <div class="form-group">
+              <label class="form-label">ประเภทการจ้าง *</label>
+              <select name="employment_type" class="form-control" required>
+                <option value="full_time" <%= employee?.employment_type === 'full_time' ? 'selected' : '' %>>ประจำ</option>
+                <option value="part_time" <%= employee?.employment_type === 'part_time' ? 'selected' : '' %>>พาร์ทไทม์</option>
+                <option value="contract" <%= employee?.employment_type === 'contract' ? 'selected' : '' %>>สัญญาจ้าง</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">วันที่เริ่มงาน *</label>
+              <input type="date" name="start_date" class="form-control" value="<%= employee?.start_date ? employee.start_date.slice(0,10) : '' %>" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">สถานะ</label>
+              <select name="status" class="form-control">
+                <option value="active" <%= (!employee || employee?.status === 'active') ? 'selected' : '' %>>ทำงาน</option>
+                <option value="resigned" <%= employee?.status === 'resigned' ? 'selected' : '' %>>ลาออก</option>
+                <option value="terminated" <%= employee?.status === 'terminated' ? 'selected' : '' %>>พ้นสภาพ</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: เงินเดือน + ธนาคาร -->
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div class="card">
+        <div class="card-header"><span class="card-title">💰 ข้อมูลเงินเดือน</span></div>
+        <div class="card-body">
+          <div class="form-group">
+            <label class="form-label">ประเภทเงินเดือน</label>
+            <select name="salary_type" class="form-control">
+              <option value="monthly" <%= employee?.salary_type === 'monthly' ? 'selected' : '' %>>รายเดือน</option>
+              <option value="daily" <%= employee?.salary_type === 'daily' ? 'selected' : '' %>>รายวัน</option>
+              <option value="hourly" <%= employee?.salary_type === 'hourly' ? 'selected' : '' %>>รายชั่วโมง</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">เงินเดือนฐาน (฿)</label>
+            <input type="number" name="base_salary" class="form-control" step="0.01" value="<%= employee?.base_salary || 0 %>" placeholder="0.00">
+          </div>
+          <div class="form-group">
+            <label class="form-label">ธนาคาร</label>
+            <input type="text" name="bank_name" class="form-control" value="<%= employee?.bank_name || '' %>" placeholder="เช่น กสิกรไทย, ไทยพาณิชย์">
+          </div>
+          <div class="form-group">
+            <label class="form-label">เลขบัญชีธนาคาร</label>
+            <input type="text" name="bank_account" class="form-control" value="<%= employee?.bank_account || '' %>" placeholder="xxx-x-xxxxx-x">
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <button type="submit" class="btn btn-primary" style="width:100%;padding:13px;"><%= employee ? '💾 บันทึกการแก้ไข' : '+ เพิ่มพนักงาน' %></button>
+        <a href="/hr" class="btn btn-secondary" style="width:100%;text-align:center;">ยกเลิก</a>
+      </div>
+    </div>
+  </div>
+</form>
+
+<%- include('../partials/footer') %>

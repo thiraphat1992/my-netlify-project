@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> — BizFlow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --sidebar-w: 248px;
+      --primary: #6366f1;
+      --primary-dark: #4f46e5;
+      --primary-light: #818cf8;
+      --primary-dim: rgba(99,102,241,0.08);
+      --primary-border: rgba(99,102,241,0.18);
+      --violet: #8b5cf6;
+      --success: #10b981;
+      --success-dim: rgba(16,185,129,0.1);
+      --danger: #ef4444;
+      --danger-dim: rgba(239,68,68,0.08);
+      --warning: #f59e0b;
+      --warning-dim: rgba(245,158,11,0.1);
+      --info: #3b82f6;
+      --info-dim: rgba(59,130,246,0.1);
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --surface-2: #f1f5f9;
+      --text: #0f172a;
+      --text-2: #334155;
+      --text-3: #64748b;
+      --text-4: #94a3b8;
+      --border: #e2e8f0;
+      --border-2: #f1f5f9;
+      --shadow-xs: 0 1px 2px rgba(0,0,0,0.05);
+      --shadow-sm: 0 1px 4px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+      --shadow: 0 2px 12px rgba(0,0,0,0.06);
+      --shadow-md: 0 4px 20px rgba(0,0,0,0.08);
+      --shadow-primary: 0 4px 18px rgba(99,102,241,0.28);
+      --radius-xs: 6px;
+      --radius-sm: 8px;
+      --radius: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 20px;
+      --radius-full: 9999px;
+    }
+
+    body {
+      font-family: 'Noto Sans Thai', 'Plus Jakarta Sans', sans-serif;
+      background: var(--bg);
+      display: flex;
+      min-height: 100vh;
+      color: var(--text);
+    }
+
+    /* ─── Sidebar ─── */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--surface);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      left: 0; top: 0; bottom: 0;
+      z-index: 100;
+      border-right: 1px solid var(--border);
+      transition: transform 0.3s ease;
+    }
+
+    .sidebar.mobile-hidden { transform: translateX(-100%); }
+
+    .sidebar-logo {
+      padding: 18px 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo-mark {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, #4f46e5, #8b5cf6);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 17px; font-weight: 800;
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+      flex-shrink: 0;
+    }
+
+    .logo-text {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 17px; font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.3px;
+    }
+
+    .logo-text span { color: var(--primary); }
+
+    .sidebar-nav {
+      flex: 1;
+      padding: 10px 10px;
+      overflow-y: auto;
+    }
+
+    .nav-section { margin-bottom: 2px; }
+
+    .nav-section-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-4);
+      padding: 10px 10px 5px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 9px 10px;
+      border-radius: var(--radius-sm);
+      text-decoration: none;
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--text-3);
+      transition: all 0.15s;
+      margin-bottom: 1px;
+    }
+
+    .nav-item:hover { background: var(--surface-2); color: var(--text-2); }
+
+    .nav-item.active {
+      background: var(--primary-dim);
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .nav-icon { font-size: 14px; width: 18px; text-align: center; flex-shrink: 0; }
+
+    .sidebar-footer {
+      padding: 14px 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .user-card { display: flex; align-items: center; gap: 10px; }
+
+    .user-avatar {
+      width: 34px; height: 34px;
+      background: linear-gradient(135deg, var(--primary), var(--violet));
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700;
+      color: #fff;
+      flex-shrink: 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    .user-info { flex: 1; min-width: 0; }
+    .user-name { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-role { font-size: 11px; color: var(--text-4); margin-top: 1px; }
+
+    .btn-logout {
+      width: 28px; height: 28px;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      color: var(--text-4);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px;
+      text-decoration: none;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    .btn-logout:hover { border-color: var(--danger); color: var(--danger); background: var(--danger-dim); }
+
+    /* ─── Main content ─── */
+    .main-content {
+      margin-left: var(--sidebar-w);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    .topbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 28px;
+      height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .topbar-title {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 15px; font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.2px;
+    }
+
+    .topbar-actions { display: flex; align-items: center; gap: 12px; }
+
+    .topbar-date {
+      font-size: 12.5px;
+      color: var(--text-4);
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-full);
+      padding: 5px 14px;
+    }
+
+    .page-body { padding: 28px; flex: 1; }
+
+    /* ─── Shared Buttons ─── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 9px 18px;
+      border-radius: var(--radius-full);
+      font-family: 'Noto Sans Thai', 'Plus Jakarta Sans', sans-serif;
+      font-size: 13.5px; font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      text-decoration: none;
+      white-space: nowrap;
+      line-height: 1;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary-dark), var(--violet));
+      color: #fff;
+      box-shadow: var(--shadow-primary);
+    }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(99,102,241,0.35); }
+    .btn-secondary { background: var(--surface); color: var(--text-2); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: var(--surface-2); border-color: #cbd5e1; }
+    .btn-danger { background: var(--danger-dim); color: var(--danger); border: 1px solid rgba(239,68,68,0.2); }
+    .btn-danger:hover { background: var(--danger); color: #fff; }
+    .btn-success { background: var(--success-dim); color: var(--success); border: 1px solid rgba(16,185,129,0.2); }
+    .btn-success:hover { background: var(--success); color: #fff; }
+    .btn-warning { background: var(--warning-dim); color: var(--warning); border: 1px solid rgba(245,158,11,0.2); }
+    .btn-sm { padding: 6px 14px; font-size: 12px; }
+    .btn-xs { padding: 4px 12px; font-size: 11.5px; }
+    .btn:active { transform: translateY(0) !important; }
+
+    /* ─── Cards ─── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+    }
+    .card-header {
+      padding: 16px 22px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .card-title {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 14px; font-weight: 700; color: var(--text);
+    }
+    .card-body { padding: 22px; }
+
+    /* ─── Table ─── */
+    .table-wrap { overflow-x: auto; border-radius: var(--radius-lg); }
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table th {
+      padding: 11px 16px;
+      font-size: 11.5px; font-weight: 600;
+      color: var(--text-3);
+      text-transform: uppercase; letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-2);
+      text-align: left;
+      white-space: nowrap;
+    }
+    .data-table td {
+      padding: 13px 16px;
+      font-size: 13.5px; color: var(--text-2);
+      border-bottom: 1px solid var(--border-2);
+    }
+    .data-table tbody tr:hover { background: #fafbff; }
+    .data-table tbody tr:last-child td { border-bottom: none; }
+
+    /* ─── Badges ─── */
+    .badge {
+      display: inline-flex; align-items: center;
+      padding: 3px 10px;
+      border-radius: var(--radius-full);
+      font-size: 11.5px; font-weight: 600;
+    }
+    .badge-primary { background: var(--primary-dim); color: var(--primary); }
+    .badge-success { background: var(--success-dim); color: var(--success); }
+    .badge-danger { background: var(--danger-dim); color: var(--danger); }
+    .badge-warning { background: var(--warning-dim); color: var(--warning); }
+    .badge-info { background: var(--info-dim); color: var(--info); }
+    .badge-gray { background: var(--surface-2); color: var(--text-3); border: 1px solid var(--border); }
+
+    /* ─── Form Controls ─── */
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 12.5px; font-weight: 600; color: var(--text-2); margin-bottom: 7px; }
+    .form-control {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: 'Noto Sans Thai', 'Plus Jakarta Sans', sans-serif;
+      font-size: 14px; color: var(--text);
+      background: var(--surface);
+      outline: none;
+      transition: all 0.2s;
+    }
+    .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+    .form-control::placeholder { color: var(--text-4); }
+    .form-hint { font-size: 11.5px; color: var(--text-4); margin-top: 5px; }
+    .form-row { display: grid; gap: 14px; }
+    .form-row-2 { grid-template-columns: 1fr 1fr; }
+    .form-row-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+    /* ─── Modal ─── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(15,23,42,0.45);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      display: none; align-items: center; justify-content: center;
+      opacity: 0; transition: opacity 0.25s;
+    }
+    .modal-overlay.active { display: flex; opacity: 1; }
+    .modal-box {
+      background: var(--surface);
+      width: 100%; max-width: 520px;
+      border-radius: var(--radius-xl);
+      box-shadow: 0 24px 64px rgba(0,0,0,0.15);
+      transform: translateY(16px) scale(0.98);
+      transition: transform 0.25s;
+      max-height: 90vh; overflow-y: auto;
+    }
+    .modal-box-lg { max-width: 680px; }
+    .modal-overlay.active .modal-box { transform: translateY(0) scale(1); }
+    .modal-header {
+      padding: 20px 24px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; background: var(--surface); z-index: 1;
+      border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    }
+    .modal-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 16px; font-weight: 700; color: var(--text); }
+    .modal-close {
+      width: 30px; height: 30px;
+      border: none; background: var(--surface-2); border-radius: 50%;
+      color: var(--text-3); cursor: pointer; font-size: 18px;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s; line-height: 1;
+    }
+    .modal-close:hover { background: var(--danger-dim); color: var(--danger); }
+    .modal-body { padding: 24px; }
+    .modal-footer {
+      padding: 16px 24px; border-top: 1px solid var(--border);
+      display: flex; justify-content: flex-end; gap: 10px;
+    }
+
+    /* ─── Alert ─── */
+    .alert {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 16px; border-radius: var(--radius-sm);
+      font-size: 13.5px; margin-bottom: 20px;
+    }
+    .alert-success { background: var(--success-dim); border: 1px solid rgba(16,185,129,0.25); color: #065f46; }
+    .alert-error { background: var(--danger-dim); border: 1px solid rgba(239,68,68,0.25); color: #991b1b; }
+
+    /* ─── Page Header ─── */
+    .page-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      margin-bottom: 24px;
+    }
+    .page-header h1 {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 22px; font-weight: 800; color: var(--text); letter-spacing: -0.5px;
+    }
+    .page-header p { font-size: 13px; color: var(--text-3); margin-top: 3px; }
+    .page-header-actions { display: flex; gap: 10px; align-items: center; }
+
+    /* ─── Stat Cards ─── */
+    .stats-grid { display: grid; gap: 16px; margin-bottom: 24px; }
+    .stats-4 { grid-template-columns: repeat(4, 1fr); }
+    .stats-3 { grid-template-columns: repeat(3, 1fr); }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px 22px;
+      box-shadow: var(--shadow-sm);
+    }
+    .stat-icon {
+      width: 42px; height: 42px; border-radius: 11px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; margin-bottom: 14px;
+    }
+    .stat-label { font-size: 11.5px; font-weight: 600; color: var(--text-4); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
+    .stat-value {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 26px; font-weight: 800; color: var(--text);
+      line-height: 1; letter-spacing: -0.5px;
+    }
+    .stat-sub { font-size: 12px; color: var(--text-4); margin-top: 5px; }
+
+    /* ─── Empty State ─── */
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--text-4); }
+    .empty-icon { font-size: 44px; margin-bottom: 14px; }
+    .empty-title { font-size: 15px; font-weight: 600; color: var(--text-3); margin-bottom: 6px; }
+    .empty-desc { font-size: 13px; }
+
+    /* ─── Tabs ─── */
+    .tab-bar {
+      display: flex; gap: 2px;
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: var(--radius-full); padding: 4px;
+      width: fit-content; margin-bottom: 24px;
+    }
+    .tab-btn {
+      padding: 7px 18px;
+      border-radius: var(--radius-full);
+      border: none; background: none;
+      font-family: 'Noto Sans Thai', 'Plus Jakarta Sans', sans-serif;
+      font-size: 13px; font-weight: 500; color: var(--text-3);
+      cursor: pointer; transition: all 0.2s;
+    }
+    .tab-btn.active { background: var(--surface); color: var(--primary); font-weight: 600; box-shadow: var(--shadow-xs); }
+
+    /* ─── Search bar ─── */
+    .search-wrap { position: relative; }
+    .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-4); font-size: 14px; pointer-events: none; }
+    .search-input {
+      width: 100%; padding: 9px 14px 9px 36px;
+      border: 1.5px solid var(--border); border-radius: var(--radius-full);
+      font-family: 'Noto Sans Thai', 'Plus Jakarta Sans', sans-serif;
+      font-size: 13.5px; color: var(--text);
+      background: var(--surface); outline: none; transition: all 0.2s;
+    }
+    .search-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+
+    @media (max-width: 1100px) {
+      .stats-4 { grid-template-columns: repeat(2, 1fr); }
+      .stats-3 { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 768px) {
+      .sidebar { transform: translateX(-100%); }
+      .main-content { margin-left: 0; }
+    }
+  </style>
+  <%- typeof extraStyles !== 'undefined' ? extraStyles : '' %>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">B</div>
+      <div class="logo-text">Biz<span>Flow</span></div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <div class="nav-section-label">ภาพรวม</div>
+        <a href="/dashboard" class="nav-item <%= activePage === 'dashboard' ? 'active' : '' %>">
+          <span class="nav-icon">📊</span> Dashboard
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">การเงิน</div>
+        <a href="/income" class="nav-item <%= activePage === 'income' ? 'active' : '' %>">
+          <span class="nav-icon">💰</span> รายรับ-รายจ่าย
+        </a>
+        <a href="/reports" class="nav-item <%= activePage === 'reports' ? 'active' : '' %>">
+          <span class="nav-icon">📋</span> รายงานการเงิน
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">การขาย</div>
+        <a href="/sales" class="nav-item <%= activePage === 'sales' ? 'active' : '' %>">
+          <span class="nav-icon">🧾</span> งานขาย
+        </a>
+        <a href="/products" class="nav-item <%= activePage === 'products' ? 'active' : '' %>">
+          <span class="nav-icon">📦</span> สินค้า
+        </a>
+        <a href="/customers" class="nav-item <%= activePage === 'customers' ? 'active' : '' %>">
+          <span class="nav-icon">🏢</span> ลูกค้า
+        </a>
+        <a href="/ecommerce" class="nav-item <%= activePage === 'ecommerce' ? 'active' : '' %>">
+          <span class="nav-icon">🛒</span> อีคอมเมิร์ซ
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">ทรัพยากรบุคคล</div>
+        <a href="/hr" class="nav-item <%= activePage === 'hr' ? 'active' : '' %>">
+          <span class="nav-icon">👥</span> พนักงาน
+        </a>
+        <a href="/hr/payroll" class="nav-item <%= activePage === 'payroll' ? 'active' : '' %>">
+          <span class="nav-icon">💵</span> เงินเดือน
+        </a>
+        <a href="/hr/leave" class="nav-item <%= activePage === 'leave' ? 'active' : '' %>">
+          <span class="nav-icon">🗓️</span> วันลา
+        </a>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar"><%= user.name ? user.name[0].toUpperCase() : 'U' %></div>
+        <div class="user-info">
+          <div class="user-name"><%= user.name %></div>
+          <div class="user-role"><%= user.role === 'admin' ? 'ผู้ดูแลระบบ' : user.role === 'manager' ? 'ผู้จัดการ' : 'พนักงาน' %></div>
+        </div>
+        <a href="/logout" class="btn-logout" title="ออกจากระบบ">⏻</a>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-title"><%- title %></div>
+      <div class="topbar-actions">
+        <span class="topbar-date"><%= new Date().toLocaleDateString('th-TH', {weekday:'short', year:'numeric', month:'long', day:'numeric'}) %></span>
+      </div>
+    </div>
+    <div class="page-body">

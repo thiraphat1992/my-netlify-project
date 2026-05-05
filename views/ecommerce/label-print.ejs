@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ใบปะหน้าพัสดุ - <%= order.customer_name %></title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;700;900&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Noto Sans Thai', sans-serif;
+  background: #f0f0f0;
+  display: flex; flex-direction: column; align-items: center;
+  min-height: 100vh; padding: 20px;
+  color: #1a1a1a;
+}
+
+.no-print {
+  margin-bottom: 16px;
+  display: flex; gap: 10px;
+}
+.btn-print {
+  padding: 10px 28px; background: #4f46e5; color: #fff;
+  border: none; border-radius: 8px; font-size: 15px; font-weight: 700;
+  cursor: pointer; font-family: 'Noto Sans Thai', sans-serif;
+}
+.btn-back {
+  padding: 10px 20px; background: #fff; color: #555;
+  border: 1.5px solid #ddd; border-radius: 8px; font-size: 15px;
+  cursor: pointer; text-decoration: none; font-family: 'Noto Sans Thai', sans-serif;
+  font-weight: 600; display: flex; align-items: center;
+}
+
+/* ─── Label Card ─── */
+.label-card {
+  width: 100mm;
+  background: #fff;
+  border: 2px solid #1a1a1a;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+  page-break-after: always;
+}
+
+.label-header {
+  background: #1a1a1a;
+  color: #fff;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.label-header-carrier {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.label-header-platform {
+  font-size: 11px;
+  color: #aaa;
+}
+
+.label-body { padding: 10px 12px; }
+
+/* ─── TO Section ─── */
+.label-to-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #777;
+  margin-bottom: 3px;
+}
+
+.label-to-name {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 17px;
+  font-weight: 800;
+  color: #1a1a1a;
+  line-height: 1.2;
+  margin-bottom: 3px;
+}
+
+.label-to-phone {
+  font-size: 13px;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.label-to-address {
+  font-size: 12px;
+  color: #444;
+  line-height: 1.6;
+}
+
+.label-divider {
+  border: none;
+  border-top: 1.5px dashed #ccc;
+  margin: 10px 0;
+}
+
+/* ─── FROM Section ─── */
+.label-from-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #aaa;
+  margin-bottom: 2px;
+}
+
+.label-from-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: #444;
+}
+
+.label-from-detail {
+  font-size: 11px;
+  color: #666;
+  line-height: 1.5;
+}
+
+/* ─── Tracking / Barcode area ─── */
+.label-tracking-section {
+  background: #f8f8f8;
+  border-top: 1.5px solid #e0e0e0;
+  padding: 10px 12px;
+  text-align: center;
+}
+
+.tracking-number {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: #1a1a1a;
+}
+
+.tracking-label {
+  font-size: 9px;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+
+/* Barcode lines simulation (visual only) */
+.barcode-wrap {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: 36px;
+  gap: 1px;
+  margin: 6px auto;
+  width: 80%;
+}
+.bc-bar {
+  width: 2px;
+  background: #1a1a1a;
+  flex-shrink: 0;
+}
+
+/* ─── Order items strip ─── */
+.label-items {
+  border-top: 1.5px solid #e0e0e0;
+  padding: 8px 12px;
+}
+.label-items-title {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #999;
+  margin-bottom: 5px;
+}
+.label-item-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: #444;
+  padding: 2px 0;
+}
+.label-item-total {
+  border-top: 1px solid #eee;
+  margin-top: 4px;
+  padding-top: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* Payment badge */
+.payment-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.pay-cod { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+.pay-paid { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+
+/* ─── Print media ─── */
+@media print {
+  body { background: #fff; padding: 0; }
+  .no-print { display: none !important; }
+  .label-card {
+    width: 100%;
+    max-width: 100mm;
+    box-shadow: none;
+    border: 1.5px solid #1a1a1a;
+  }
+  @page {
+    size: 100mm 150mm;
+    margin: 3mm;
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="no-print">
+  <a href="/ecommerce" class="btn-back">← กลับ</a>
+  <button class="btn-print" onclick="window.print()">🖨️ พิมพ์ Label</button>
+  <% if (!order.label_printed) { %>
+  <button class="btn-back" onclick="markPrinted()" style="border-color:#10b981;color:#10b981;">✓ ทำเครื่องหมายว่าปริ้นแล้ว</button>
+  <% } else { %>
+  <span style="padding:10px;font-size:13px;color:#10b981;font-weight:700;">✓ ปริ้นแล้ว <%= order.label_printed_at ? new Date(order.label_printed_at).toLocaleString('th-TH') : '' %></span>
+  <% } %>
+</div>
+
+<%
+  const store = order.store || {}
+  const senderName = store.sender_name || company.name
+  const senderPhone = store.sender_phone || company.phone
+  const senderAddress = store.sender_address || company.address
+  const isPaid = order.payment_method !== 'cod'
+  const fullAddress = [order.customer_address, order.customer_district, order.customer_province, order.customer_postal_code].filter(Boolean).join(' ')
+%>
+
+<div class="label-card">
+  <!-- Header -->
+  <div class="label-header">
+    <div>
+      <div class="label-header-carrier"><%= order.shipping_provider || 'ไปรษณีย์ไทย' %></div>
+      <div class="label-header-platform">
+        <%= order.platform === 'line_shopping' ? 'LINE Shopping' : order.platform === 'myshop' ? 'MyShop' : order.platform === 'manual' ? 'ออเดอร์ตรง' : order.platform %>
+        <% if (order.platform_order_id) { %> · #<%= order.platform_order_id %><% } %>
+      </div>
+    </div>
+    <div style="text-align:right;">
+      <span class="payment-badge <%= isPaid ? 'pay-paid' : 'pay-cod' %>">
+        <%= isPaid ? 'จ่ายแล้ว' : 'COD' %>
+      </span>
+      <% if (!isPaid) { %>
+      <div style="font-size:14px;font-weight:800;color:#fff;margin-top:2px;">฿<%= (parseFloat(order.total)||0).toLocaleString('th-TH',{minimumFractionDigits:0}) %></div>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div class="label-body">
+    <!-- TO -->
+    <div class="label-to-label">ผู้รับ (TO)</div>
+    <div class="label-to-name"><%= order.customer_name || 'ลูกค้า' %></div>
+    <% if (order.customer_phone) { %><div class="label-to-phone">📞 <%= order.customer_phone %></div><% } %>
+    <div class="label-to-address"><%= fullAddress || 'ไม่ระบุที่อยู่' %></div>
+
+    <hr class="label-divider">
+
+    <!-- FROM -->
+    <div class="label-from-label">ผู้ส่ง (FROM)</div>
+    <div class="label-from-name"><%= senderName %></div>
+    <div class="label-from-detail">
+      <% if (senderPhone) { %>📞 <%= senderPhone %><br><% } %>
+      <% if (senderAddress) { %><%= senderAddress %><% } %>
+    </div>
+  </div>
+
+  <!-- Tracking -->
+  <div class="label-tracking-section">
+    <div class="tracking-label">Tracking Number</div>
+    <% if (order.tracking_no) { %>
+    <div class="tracking-number"><%= order.tracking_no %></div>
+    <div class="barcode-wrap" id="bcWrap"></div>
+    <% } else { %>
+    <div style="color:#ccc;font-size:13px;padding:8px 0;">ยังไม่มีเลข Tracking</div>
+    <% } %>
+  </div>
+
+  <!-- Items -->
+  <div class="label-items">
+    <div class="label-items-title">รายการสินค้า</div>
+    <% (order.items || []).forEach(item => { %>
+    <div class="label-item-row">
+      <span><%= item.product_name %><% if(item.variant){%> (<%= item.variant %>)<% } %> × <%= item.qty %></span>
+      <span>฿<%= (parseFloat(item.line_total)||0).toLocaleString('th-TH',{minimumFractionDigits:0}) %></span>
+    </div>
+    <% }) %>
+    <% if (order.shipping_fee > 0) { %>
+    <div class="label-item-row" style="color:#999;">
+      <span>ค่าส่ง</span>
+      <span>฿<%= (parseFloat(order.shipping_fee)||0).toLocaleString('th-TH',{minimumFractionDigits:0}) %></span>
+    </div>
+    <% } %>
+    <div class="label-item-total">
+      <span>รวม</span>
+      <span>฿<%= (parseFloat(order.total)||0).toLocaleString('th-TH',{minimumFractionDigits:0}) %></span>
+    </div>
+    <% if (order.notes) { %>
+    <div style="margin-top:6px;font-size:11px;color:#888;background:#f9f9f9;padding:5px 8px;border-radius:4px;">หมายเหตุ: <%= order.notes %></div>
+    <% } %>
+  </div>
+</div>
+
+<script>
+// Generate barcode-like visual from tracking number
+function generateBarcode(trackingNo) {
+  const wrap = document.getElementById('bcWrap')
+  if (!wrap) return
+  const chars = Array.from(trackingNo)
+  chars.forEach((ch, i) => {
+    const code = ch.charCodeAt(0)
+    const heights = [100, 70, 85, 60, 100, 75, 90, 65, 100, 80]
+    const height = heights[code % 10]
+    const width = (i % 3 === 0) ? 3 : (i % 3 === 1) ? 1 : 2
+
+    const bar = document.createElement('div')
+    bar.className = 'bc-bar'
+    bar.style.height = height + '%'
+    bar.style.width = width + 'px'
+    wrap.appendChild(bar)
+
+    if (i % 4 === 0) {
+      const gap = document.createElement('div')
+      gap.style.width = '2px'
+      wrap.appendChild(gap)
+    }
+  })
+}
+
+<% if (order.tracking_no) { %>
+generateBarcode('<%= order.tracking_no %>')
+<% } %>
+
+// Auto-print on load (optional — comment out if not desired)
+// window.addEventListener('load', () => setTimeout(() => window.print(), 500))
+
+async function markPrinted() {
+  await fetch('/ecommerce/orders/<%= order.id %>/label-printed', { method: 'POST' })
+  location.reload()
+}
+</script>
+</body>
+</html>
