@@ -42,7 +42,7 @@ app.use(methodOverride('_method'))
 // Cookie-based session (stateless — works on serverless/Netlify)
 app.use(cookieSession({
   name: 'bizflow',
-  secret: process.env.SESSION_SECRET || 'bizflow-secret-2024',
+  secret: process.env.SESSION_SECRET || 'dev-only-not-for-production',
   maxAge: 24 * 60 * 60 * 1000,
   secure: process.env.NODE_ENV === 'production',
   httpOnly: true,
