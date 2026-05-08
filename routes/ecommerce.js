@@ -2,11 +2,8 @@ const express = require('express')
 const router = express.Router()
 const https = require('https')
 const crypto = require('crypto')
-const multer = require('multer')
 const { requireAuth } = require('../middleware/auth')
 const { supabase, supabaseAdmin } = require('../config/supabase')
-
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } })
 
 // ─── LINE signature verification ─────────────────────────────────────────────
 function verifyLineSignature(channelSecret, rawBody, signatureHeader) {
@@ -26,6 +23,29 @@ function lineRequest(path, method = 'GET', accessToken, body = null) {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json'
       }
+    }
+    const req = https.request(options, res => {
+      let data = ''
+      res.on('data', chunk => { data += chunk })
+      res.on('end', () => {
+        try { resolve({ status: res.statusCode, data: JSON.parse(data) }) }
+        catch { resolve({ status: res.statusCode, data }) }
+      })
+    })
+    req.on('error', reject)
+    if (body) req.write(JSON.stringify(body))
+    req.end()
+  })
+}
+
+// ─── MyShop OA Plus API helper ────────────────────────────────────────────────
+function myshopRequest(path, method = 'GET', apiKey, body = null) {
+  return new Promise((resolve, reject) => {
+    const options = {
+      hostname: 'developers-oaplus.line.biz',
+      path: '/myshop/v1' + path,
+      method,
+      headers: { 'X-API-KEY': apiKey, 'Content-Type': 'application/json' }
     }
     const req = https.request(options, res => {
       let data = ''
@@ -74,9 +94,10 @@ function mapLineStatus(s) {
 router.get('/', requireAuth, async (req, res) => {
   const { status, store_id, q } = req.query
   try {
-    const [{ data: stores }, { data: chatsRaw }] = await Promise.all([
+    const [{ data: stores }, { data: chatsRaw }, { data: productsRaw }] = await Promise.all([
       supabase.from('ecommerce_stores').select('*').order('created_at'),
-      supabase.from('ecommerce_chats').select('*').order('last_message_at', { ascending: false }).limit(50)
+      supabase.from('ecommerce_chats').select('*').order('last_message_at', { ascending: false }).limit(50),
+      supabase.from('ecommerce_products').select('*, store:ecommerce_stores(store_name)').order('created_at', { ascending: false }).limit(500)
     ])
 
     let query = supabase
@@ -101,17 +122,24 @@ router.get('/', requireAuth, async (req, res) => {
       revenue: allOrders.filter(o => o.status !== 'cancelled').reduce((s, o) => s + (parseFloat(o.total) || 0), 0)
     }
 
+    const proto = req.get('x-forwarded-proto') || req.protocol
+    const host  = req.get('x-forwarded-host') || req.get('host')
+    const appUrl = process.env.APP_URL || `${proto}://${host}`
+
     res.render('ecommerce/index', {
       title: 'อีคอมเมิร์ซ', activePage: 'ecommerce',
       orders: allOrders, stores: stores || [], chats: chatsRaw || [],
+      products: productsRaw || [],
       stats, filters: { status, store_id, q },
+      appUrl,
       success: req.flash('success'), error: req.flash('error')
     })
   } catch (err) {
     console.error(err)
     res.render('ecommerce/index', {
       title: 'อีคอมเมิร์ซ', activePage: 'ecommerce',
-      orders: [], stores: [], chats: [], stats: { total: 0, pending: 0, packing: 0, shipped: 0, delivered: 0, revenue: 0 },
+      orders: [], stores: [], chats: [], products: [],
+      stats: { total: 0, pending: 0, packing: 0, shipped: 0, delivered: 0, revenue: 0 },
       filters: {}, success: [], error: ['โหลดข้อมูลไม่สำเร็จ: ' + err.message]
     })
   }
@@ -242,10 +270,15 @@ router.post('/chat/:chatId/reply', requireAuth, async (req, res) => {
   }
 })
 
-// ─── Chat: upload image → Supabase Storage → LINE push ───────────────────────
-router.post('/chat/:chatId/upload', requireAuth, upload.single('image'), async (req, res) => {
+// ─── Chat: upload image (รับ base64 JSON — ทำงานได้ทั้ง localhost + Netlify serverless) ──
+router.post('/chat/:chatId/upload', requireAuth, async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ ok: false, error: 'ไม่มีไฟล์' })
+    const { imageBase64, mimeType, filename: origName } = req.body
+    if (!imageBase64) return res.status(400).json({ ok: false, error: 'ไม่มีข้อมูลรูปภาพ' })
+
+    const buffer = Buffer.from(imageBase64, 'base64')
+    const ext = ((origName || 'image.jpg').split('.').pop() || 'jpg').toLowerCase()
+    const mtype = mimeType || 'image/jpeg'
 
     const { data: chat } = await supabase
       .from('ecommerce_chats')
@@ -254,22 +287,13 @@ router.post('/chat/:chatId/upload', requireAuth, upload.single('image'), async (
       .single()
     if (!chat) return res.status(404).json({ ok: false, error: 'ไม่พบแชท' })
 
-    // อัปโหลดไปที่ Supabase Storage bucket: chat-images
-    const ext = (req.file.originalname || 'image.jpg').split('.').pop().toLowerCase() || 'jpg'
+    // สร้าง bucket ถ้ายังไม่มี (ignore error ถ้ามีแล้ว)
+    await supabaseAdmin.storage.createBucket('chat-images', { public: true }).catch(() => {})
+
     const filename = `${chat.id}/${Date.now()}.${ext}`
-
-    let { error: upErr } = await supabaseAdmin.storage
+    const { error: upErr } = await supabaseAdmin.storage
       .from('chat-images')
-      .upload(filename, req.file.buffer, { contentType: req.file.mimetype, upsert: false })
-
-    if (upErr && upErr.message && upErr.message.includes('Bucket not found')) {
-      // สร้าง bucket อัตโนมัติถ้ายังไม่มี
-      await supabaseAdmin.storage.createBucket('chat-images', { public: true })
-      const retry = await supabaseAdmin.storage
-        .from('chat-images')
-        .upload(filename, req.file.buffer, { contentType: req.file.mimetype, upsert: false })
-      upErr = retry.error
-    }
+      .upload(filename, buffer, { contentType: mtype, upsert: true })
 
     if (upErr) return res.status(500).json({ ok: false, error: 'Storage: ' + upErr.message })
 
@@ -285,12 +309,8 @@ router.post('/chat/:chatId/upload', requireAuth, upload.single('image'), async (
 
     // บันทึกลง DB
     await supabaseAdmin.from('ecommerce_chat_messages').insert([{
-      chat_id: chat.id,
-      sender_type: 'merchant',
-      message: '[รูปภาพ]',
-      message_type: 'image',
-      media_url: publicUrl,
-      sent_at: new Date()
+      chat_id: chat.id, sender_type: 'merchant',
+      message: '[รูปภาพ]', message_type: 'image', media_url: publicUrl, sent_at: new Date()
     }])
     await supabaseAdmin.from('ecommerce_chats').update({
       last_message: '[รูปภาพ]', last_message_at: new Date()
@@ -302,80 +322,71 @@ router.post('/chat/:chatId/upload', requireAuth, upload.single('image'), async (
   }
 })
 
-// ─── LINE Messaging webhook (เวอร์ชันติดกล้องวงจรปิด) ──────────────────────────────────
+// ─── Webhook ping test (GET) — LINE ใช้ GET เพื่อ verify URL ────────────────
+router.get('/webhook/:storeId', (req, res) => {
+  res.status(200).send('OK')
+})
+
+// ─── API: webhook test hit log ────────────────────────────────────────────────
+const _webhookLog = []
+router.get('/api/webhook-log', requireAuth, (req, res) => {
+  res.json(_webhookLog.slice(-20))
+})
+
+// ─── LINE Messaging webhook ───────────────────────────────────────────────────
 router.post('/webhook/:storeId', async (req, res) => {
+  // ต้อง return 200 ให้ LINE เสมอ ไม่ว่าจะเกิดอะไร
+  res.sendStatus(200)
+
   try {
     const { storeId } = req.params
-    console.log('🔔 [WEBHOOK] เริ่มรับข้อมูลจากร้านค้า:', storeId)
-    console.log('📦 [WEBHOOK] ข้อมูลดิบที่ได้ (req.body):', JSON.stringify(req.body))
-
-    const { data: store, error: storeErr } = await supabaseAdmin.from('ecommerce_stores')
-      .select('id, channel_secret, access_token').eq('id', storeId).maybeSingle()
-    
-    if (storeErr || !store) {
-      console.log('❌ [WEBHOOK] หาร้านค้าไม่เจอ หรือ Error:', storeErr)
-      return res.status(404).send('Store not found')
-    }
-
-    // [ปิดระบบตรวจสอบ Signature ชั่วคราว เพื่อเทสว่าข้อมูลเข้าได้ไหม]
-    // if (store.channel_secret && req.rawBody) { ... }
-
     const events = req.body?.events || []
-    console.log('📩 [WEBHOOK] จำนวนข้อความที่ส่งมา:', events.length)
+    _webhookLog.push({ time: new Date().toISOString(), storeId, events: events.length, body: JSON.stringify(req.body).slice(0, 300) })
+    if (_webhookLog.length > 50) _webhookLog.shift()
+
+    // verification ping (events=[]) — ไม่ต้องทำอะไรเพิ่ม
+    if (events.length === 0) return
+
+    const { data: store } = await supabaseAdmin.from('ecommerce_stores')
+      .select('id, access_token').eq('id', storeId).maybeSingle()
+    if (!store) { console.log('[WEBHOOK] store not found:', storeId); return }
 
     for (const ev of events) {
       const userId = ev.source?.userId
       if (!userId) continue
 
-      console.log('👤 [WEBHOOK] ลูกค้าทักมา LINE ID:', userId)
-      const chat = await getOrCreateChat(storeId, userId, store.access_token)
-      
-      if (!chat) {
-        console.log('❌ [WEBHOOK] ไม่สามารถสร้างหรือดึงข้อมูลห้องแชทได้ (chat is null)')
-        continue
-      }
+      try {
+        const chat = await getOrCreateChat(storeId, userId, store.access_token)
+        if (!chat) continue
 
-      if (ev.type === 'message') {
-        const msgText = ev.message?.type === 'text' ? ev.message.text : null
-        console.log('💬 [WEBHOOK] ข้อความลูกค้าคือ:', msgText)
+        if (ev.type === 'message') {
+          const msgText = ev.message?.type === 'text' ? ev.message.text : null
+          await supabaseAdmin.from('ecommerce_chat_messages').insert([{
+            chat_id: chat.id,
+            sender_type: 'customer',
+            message: msgText || `[${ev.message?.type || 'unknown'}]`,
+            message_type: ev.message?.type || 'text',
+            sent_at: new Date(ev.timestamp)
+          }])
+          await supabaseAdmin.from('ecommerce_chats').update({
+            last_message: msgText || `[${ev.message?.type}]`,
+            last_message_at: new Date(ev.timestamp),
+            unread_count: (chat.unread_count || 0) + 1
+          }).eq('id', chat.id)
 
-        // ลองบันทึกข้อความลง Database
-        const { error: insertErr } = await supabaseAdmin.from('ecommerce_chat_messages').insert([{
-          chat_id: chat.id,
-          sender_type: 'customer',
-          message: msgText || `[${ev.message?.type || 'unknown'}]`,
-          message_type: ev.message?.type || 'text',
-          sent_at: new Date(ev.timestamp)
-        }])
-
-        if (insertErr) {
-          console.log('❌ [DATABASE] Error บันทึกข้อความแชทพัง!:', insertErr)
-        } else {
-          console.log('✅ [DATABASE] บันทึกข้อความลงตารางสำเร็จ!')
+        } else if (ev.type === 'follow') {
+          await supabaseAdmin.from('ecommerce_chats').update({
+            status: 'open',
+            last_message: '👋 ลูกค้า Follow ร้านค้า',
+            last_message_at: new Date(ev.timestamp)
+          }).eq('id', chat.id)
         }
-
-        // อัปเดตตารางหลัก
-        const { error: updateErr } = await supabaseAdmin.from('ecommerce_chats').update({
-          last_message: msgText || `[${ev.message?.type}]`,
-          last_message_at: new Date(ev.timestamp),
-          unread_count: (chat.unread_count || 0) + 1
-        }).eq('id', chat.id)
-        
-        if (updateErr) console.log('❌ [DATABASE] Error อัปเดตห้องแชทพัง!:', updateErr)
-
-      } else if (ev.type === 'follow') {
-        await supabaseAdmin.from('ecommerce_chats').update({
-          status: 'open', last_message: '👋 ลูกค้า Follow ร้านค้า',
-          last_message_at: new Date(ev.timestamp)
-        }).eq('id', chat.id)
+      } catch (evErr) {
+        console.error('[WEBHOOK] event error:', evErr.message)
       }
     }
-
-    res.sendStatus(200)
-
   } catch (err) {
-    console.error('🔥 [LINE Webhook Crash Error]', err)
-    res.sendStatus(500)
+    console.error('[WEBHOOK] error:', err.message)
   }
 })
 
@@ -567,7 +578,144 @@ router.delete('/stores/:id', requireAuth, async (req, res) => {
   res.redirect('/ecommerce?tab=settings')
 })
 
+// ─── Products: CRUD ──────────────────────────────────────────────────────────
+router.post('/products', requireAuth, async (req, res) => {
+  const { name, sku, price, compare_price, cost, stock, image_url, category, description, store_id, status } = req.body
+  if (!name) { req.flash('error', 'กรุณาใส่ชื่อสินค้า'); return res.redirect('/ecommerce?tab=products') }
+  const { error } = await supabaseAdmin.from('ecommerce_products').insert([{
+    name, sku: sku || null, description: description || null,
+    price: parseFloat(price) || 0, compare_price: parseFloat(compare_price) || null,
+    cost: parseFloat(cost) || null, stock: parseInt(stock) || 0,
+    image_url: image_url || null, category: category || null,
+    store_id: store_id || null, status: status || 'active', platform: 'manual'
+  }])
+  if (error) req.flash('error', 'เพิ่มสินค้าไม่สำเร็จ: ' + error.message)
+  else req.flash('success', `เพิ่มสินค้า "${name}" แล้ว`)
+  res.redirect('/ecommerce?tab=products')
+})
+
+router.post('/products/:id/update', requireAuth, async (req, res) => {
+  const { name, sku, price, compare_price, cost, stock, image_url, category, description, status } = req.body
+  const { error } = await supabaseAdmin.from('ecommerce_products').update({
+    name, sku: sku || null, description: description || null,
+    price: parseFloat(price) || 0, compare_price: parseFloat(compare_price) || null,
+    cost: parseFloat(cost) || null, stock: parseInt(stock) || 0,
+    image_url: image_url || null, category: category || null,
+    status: status || 'active', updated_at: new Date()
+  }).eq('id', req.params.id)
+  if (error) req.flash('error', 'แก้ไขไม่สำเร็จ: ' + error.message)
+  else req.flash('success', 'แก้ไขสินค้าแล้ว')
+  res.redirect('/ecommerce?tab=products')
+})
+
+router.post('/products/:id/delete', requireAuth, async (req, res) => {
+  await supabaseAdmin.from('ecommerce_products').delete().eq('id', req.params.id)
+  req.flash('success', 'ลบสินค้าแล้ว')
+  res.redirect('/ecommerce?tab=products')
+})
+
+// ─── Products: Sync from MyShop API ──────────────────────────────────────────
+router.post('/sync-products/:storeId', requireAuth, async (req, res) => {
+  try {
+    const { data: store } = await supabase.from('ecommerce_stores').select('*').eq('id', req.params.storeId).single()
+    if (!store) { req.flash('error', 'ไม่พบร้านค้า'); return res.redirect('/ecommerce?tab=products') }
+
+    const apiKey = store.settings?.myshop_api_key
+    if (!apiKey) {
+      req.flash('error', 'กรุณาใส่ MyShop API Key ในการตั้งค่าร้านค้าก่อน (แก้ไขร้านค้า → MyShop API Key)')
+      return res.redirect('/ecommerce?tab=products')
+    }
+
+    // ดึง products จาก MyShop API
+    let allProducts = [], page = 1, hasMore = true
+    while (hasMore) {
+      const r = await myshopRequest(`/products?page=${page}&limit=50`, 'GET', apiKey)
+      if (r.status !== 200) {
+        req.flash('error', `MyShop API ตอบกลับ ${r.status} — ตรวจสอบ API Key ที่ oaplus.line.biz`)
+        return res.redirect('/ecommerce?tab=products')
+      }
+      const items = r.data?.products || r.data?.items || r.data?.data || []
+      allProducts = allProducts.concat(items)
+      hasMore = items.length === 50
+      page++
+      if (page > 20) break // safety
+    }
+
+    // โหลด product ที่มีอยู่แล้ว เพื่อ insert/update โดยไม่ต้องพึ่ง unique constraint
+    const { data: existing } = await supabaseAdmin
+      .from('ecommerce_products')
+      .select('id, platform_product_id')
+      .eq('store_id', store.id)
+      .eq('platform', 'myshop')
+    const existingMap = {}
+    for (const e of (existing || [])) existingMap[e.platform_product_id] = e.id
+
+    let synced = 0, errors = 0, firstError = null
+    for (const p of allProducts) {
+      const pid = String(p.id || p.productId || '')
+      if (!pid) continue
+      const v = p.variants?.[0] || {}
+      const salePrice = parseFloat(v.discountedPrice ?? v.price ?? 0)
+      const origPrice = parseFloat(v.price ?? 0)
+      const record = {
+        store_id: store.id, platform: 'myshop', platform_product_id: pid,
+        name: p.name || 'ไม่มีชื่อ',
+        price: salePrice,
+        compare_price: origPrice > salePrice ? origPrice : null,
+        stock: parseInt(v.availableNumber ?? v.onHandNumber ?? 0),
+        image_url: p.imageUrls?.[0] || v.imageUrl || null,
+        category: p.category?.nameTh || p.category?.nameEn || null,
+        sku: p.code || v.sku || null,
+        description: p.description || null,
+        status: p.isDisplay === true ? 'active' : 'inactive',
+        updated_at: new Date()
+      }
+      let error
+      if (existingMap[pid]) {
+        ;({ error } = await supabaseAdmin.from('ecommerce_products').update(record).eq('id', existingMap[pid]))
+      } else {
+        ;({ error } = await supabaseAdmin.from('ecommerce_products').insert(record))
+      }
+      if (error) { if (!firstError) firstError = error; console.error('sync error:', error.message, error.code); errors++ } else synced++
+    }
+
+    // อัปเดต last_sync_at
+    await supabaseAdmin.from('ecommerce_stores').update({ last_sync_at: new Date() }).eq('id', store.id)
+    const errDetail = firstError ? ` — ${firstError.message}` : ''
+    req.flash('success', `ซิงค์สินค้าจาก MyShop สำเร็จ ${synced} รายการ${errors ? ` (ข้อผิดพลาด ${errors} รายการ${errDetail})` : ''}`)
+  } catch (err) {
+    req.flash('error', 'ซิงค์ไม่สำเร็จ: ' + err.message)
+  }
+  res.redirect('/ecommerce?tab=products')
+})
+
+// ─── Stores: update (PUT) — เพิ่ม myshop_api_key ใน settings ─────────────────
+router.post('/stores/:id/api-key', requireAuth, async (req, res) => {
+  const { myshop_api_key } = req.body
+  const { data: store } = await supabase.from('ecommerce_stores').select('settings').eq('id', req.params.id).single()
+  const settings = { ...(store?.settings || {}), myshop_api_key: myshop_api_key || null }
+  await supabaseAdmin.from('ecommerce_stores').update({ settings }).eq('id', req.params.id)
+  req.flash('success', 'บันทึก MyShop API Key แล้ว')
+  res.redirect('/ecommerce?tab=products')
+})
+
 // ─── API: get chat messages ───────────────────────────────────────────────────
+// ─── API: mark chat as read ──────────────────────────────────────────────────
+router.post('/chat/:chatId/read', requireAuth, async (req, res) => {
+  await supabaseAdmin.from('ecommerce_chats').update({ unread_count: 0 }).eq('id', req.params.chatId)
+  res.json({ ok: true })
+})
+
+// ─── API: chat list (for polling) ────────────────────────────────────────────
+router.get('/api/chats', requireAuth, async (req, res) => {
+  const { data } = await supabase
+    .from('ecommerce_chats')
+    .select('id, customer_name, customer_avatar, last_message, last_message_at, unread_count, status, platform_chat_id')
+    .order('last_message_at', { ascending: false })
+    .limit(50)
+  res.json(data || [])
+})
+
 router.get('/api/chat/:chatId/messages', requireAuth, async (req, res) => {
   const { data } = await supabase
     .from('ecommerce_chat_messages')

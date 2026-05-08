@@ -360,6 +360,29 @@ CREATE TABLE IF NOT EXISTS ecommerce_chat_messages (
   sent_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS ecommerce_products (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  store_id UUID REFERENCES ecommerce_stores(id) ON DELETE CASCADE,
+  platform VARCHAR(50) DEFAULT 'manual',       -- manual, myshop, shopee, lazada
+  platform_product_id VARCHAR(255),            -- ID จาก platform
+  name VARCHAR(500) NOT NULL,
+  sku VARCHAR(255),
+  description TEXT,
+  price DECIMAL(10,2) DEFAULT 0,
+  compare_price DECIMAL(10,2),                 -- ราคาก่อนลด
+  cost DECIMAL(10,2),                          -- ราคาต้นทุน
+  stock INT DEFAULT 0,
+  image_url TEXT,
+  category VARCHAR(255),
+  status VARCHAR(50) DEFAULT 'active',         -- active, inactive, out_of_stock
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ecommerce_products_platform_uniq
+  ON ecommerce_products(store_id, platform_product_id)
+  WHERE platform_product_id IS NOT NULL;
+
 -- ========== RLS Policies (Row Level Security) ==========
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;

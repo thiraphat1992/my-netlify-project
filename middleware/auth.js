@@ -4,6 +4,13 @@ const requireAuth = (req, res, next) => {
     res.locals.user = req.session.user
     return next()
   }
+  // API / fetch requests — ส่ง JSON กลับแทนการ redirect HTML
+  const isApiReq = req.xhr
+    || (req.headers.accept && req.headers.accept.includes('application/json'))
+    || (req.headers['content-type'] && req.headers['content-type'].includes('application/json'))
+  if (isApiReq) {
+    return res.status(401).json({ ok: false, error: 'session หมดอายุ กรุณา reload หน้าเว็บแล้วล็อกอินใหม่' })
+  }
   req.flash('error', 'กรุณาเข้าสู่ระบบก่อน')
   res.redirect('/login')
 }

@@ -134,6 +134,23 @@
   .chat-sidebar.mobile-show { display:flex; position:absolute; z-index:10; width:100%; height:100%; }
 }
 
+/* ─── Product Cards ─── */
+.product-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:14px; }
+.product-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg);
+  overflow:hidden; box-shadow:var(--shadow-sm); transition:all 0.15s; }
+.product-card:hover { border-color:var(--primary); box-shadow:var(--shadow-primary); }
+.product-img { width:100%; height:150px; object-fit:cover; background:var(--surface-2); display:block; }
+.product-img-placeholder { width:100%; height:150px; background:var(--surface-2);
+  display:flex; align-items:center; justify-content:center; font-size:36px; }
+.product-body { padding:12px; }
+.product-name { font-size:13.5px; font-weight:700; color:var(--text); margin-bottom:4px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.product-price { font-size:15px; font-weight:800; color:var(--primary); }
+.product-compare { font-size:11.5px; color:var(--text-4); text-decoration:line-through; margin-left:4px; }
+.product-meta { display:flex; justify-content:space-between; align-items:center; margin-top:8px; }
+.product-stock { font-size:11.5px; }
+.product-actions { display:flex; gap:6px; padding:8px 12px; border-top:1px solid var(--border); background:var(--surface); }
+
 /* Label printed badge */
 .label-ok { display:inline-flex; align-items:center; gap:4px; font-size:11px; color:var(--success); }
 
@@ -221,6 +238,7 @@
 <div class="tab-bar">
   <button class="tab-btn <%= activeTab === 'orders' ? 'active' : '' %>" onclick="switchTab('orders')">📦 ออเดอร์</button>
   <button class="tab-btn <%= activeTab === 'chat' ? 'active' : '' %>" onclick="switchTab('chat')">💬 แชท<% if(chats.filter(c=>c.unread_count>0).length > 0) { %> <span style="display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;background:var(--danger);color:#fff;font-size:10px;border-radius:100px;margin-left:4px;padding:0 3px;"><%= chats.filter(c=>c.unread_count>0).length %></span><% } %></button>
+  <button class="tab-btn <%= activeTab === 'products' ? 'active' : '' %>" onclick="switchTab('products')">🛍️ สินค้า <span style="display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;background:var(--border);color:var(--text-3);font-size:10px;border-radius:100px;margin-left:4px;padding:0 4px;"><%= products.length %></span></button>
   <button class="tab-btn <%= activeTab === 'settings' ? 'active' : '' %>" onclick="switchTab('settings')">⚙️ ตั้งค่าร้าน</button>
 </div>
 
@@ -403,6 +421,151 @@
   </div>
 </div>
 
+<!-- ═══════════════ TAB: PRODUCTS ═══════════════ -->
+<div id="tab-products" class="tab-pane" style="display:<%= activeTab==='products'?'block':'none' %>">
+
+  <!-- Toolbar -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <% stores.filter(s => s.settings && s.settings.myshop_api_key).forEach(s => { %>
+      <form action="/ecommerce/sync-products/<%= s.id %>" method="POST" style="margin:0;">
+        <button type="submit" class="btn btn-secondary btn-sm">⟳ ซิงค์ MyShop: <%= s.store_name %></button>
+      </form>
+      <% }) %>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="openModal('addProductModal')">+ เพิ่มสินค้า</button>
+  </div>
+
+  <!-- Stats row -->
+  <% const activeProds = products.filter(p => p.status === 'active').length
+     const outOfStock  = products.filter(p => p.stock === 0).length %>
+  <div class="stats-grid stats-4" style="margin-bottom:16px;">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:#eef2ff;">🛍️</div>
+      <div class="stat-label">สินค้าทั้งหมด</div>
+      <div class="stat-value"><%= products.length %></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--success-dim);">✅</div>
+      <div class="stat-label">กำลังขาย</div>
+      <div class="stat-value" style="color:var(--success);"><%= activeProds %></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--danger-dim);">⚠️</div>
+      <div class="stat-label">สินค้าหมด</div>
+      <div class="stat-value" style="color:var(--danger);"><%= outOfStock %></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--warning-dim);">🏪</div>
+      <div class="stat-label">จาก MyShop</div>
+      <div class="stat-value" style="color:var(--warning);"><%= products.filter(p=>p.platform==='myshop').length %></div>
+    </div>
+  </div>
+
+  <!-- Search + filter -->
+  <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+    <div class="search-wrap" style="flex:1;min-width:200px;">
+      <span class="search-icon">🔍</span>
+      <input type="text" class="search-input" placeholder="ค้นหาชื่อสินค้า, SKU..."
+        oninput="filterProducts(this.value)" id="productSearchInput">
+    </div>
+    <select class="form-control" style="width:auto;padding:8px 12px;border-radius:var(--radius-full);" onchange="filterProductsByStatus(this.value)">
+      <option value="">ทุกสถานะ</option>
+      <option value="active">กำลังขาย</option>
+      <option value="inactive">ปิด</option>
+      <option value="out_of_stock">สินค้าหมด</option>
+    </select>
+  </div>
+
+  <!-- Product grid -->
+  <% if (products.length === 0) { %>
+  <div class="empty-state card">
+    <div class="empty-icon">🛍️</div>
+    <div class="empty-title">ยังไม่มีสินค้า</div>
+    <div class="empty-desc">
+      เชื่อมต่อ MyShop แล้วกด <strong>ซิงค์ MyShop</strong> หรือ
+      <a href="#" onclick="openModal('addProductModal')" style="color:var(--primary)">+ เพิ่มสินค้าด้วยตนเอง</a>
+    </div>
+  </div>
+  <% } else { %>
+  <div class="product-grid" id="productGrid">
+    <% products.forEach(p => { %>
+    <div class="product-card"
+      data-name="<%= (p.name||'').toLowerCase() %>"
+      data-sku="<%= (p.sku||'').toLowerCase() %>"
+      data-status="<%= p.status || 'active' %>">
+      <% if (p.image_url) { %>
+      <img src="<%= p.image_url %>" alt="<%= p.name %>" class="product-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <div class="product-img-placeholder" style="display:none;">🛍️</div>
+      <% } else { %>
+      <div class="product-img-placeholder">🛍️</div>
+      <% } %>
+      <div class="product-body">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:4px;margin-bottom:4px;">
+          <div class="product-name" title="<%= p.name %>"><%= p.name %></div>
+          <span class="badge <%= p.status === 'active' ? 'badge-success' : 'badge-gray' %>" style="font-size:10px;flex-shrink:0;">
+            <%= p.status === 'active' ? 'ขาย' : 'ปิด' %>
+          </span>
+        </div>
+        <% if (p.sku) { %><div style="font-size:11px;color:var(--text-4);margin-bottom:4px;">SKU: <%= p.sku %></div><% } %>
+        <div style="display:flex;align-items:baseline;gap:2px;">
+          <span class="product-price">฿<%= parseFloat(p.price||0).toLocaleString('th-TH',{minimumFractionDigits:0}) %></span>
+          <% if (p.compare_price && p.compare_price > p.price) { %>
+          <span class="product-compare">฿<%= parseFloat(p.compare_price).toLocaleString('th-TH',{minimumFractionDigits:0}) %></span>
+          <% } %>
+        </div>
+        <div class="product-meta">
+          <span class="product-stock" style="color:<%= p.stock === 0 ? 'var(--danger)' : p.stock <= 5 ? 'var(--warning)' : 'var(--text-3)' %>">
+            <%= p.stock === 0 ? '❌ หมดสต็อก' : `📦 ${p.stock} ชิ้น` %>
+          </span>
+          <% if (p.platform === 'myshop') { %><span style="font-size:10px;color:var(--primary);font-weight:600;">MyShop</span><% } %>
+        </div>
+      </div>
+      <div class="product-actions">
+        <button class="btn btn-secondary btn-xs" style="flex:1;"
+          data-id="<%= p.id %>"
+          data-name="<%= p.name %>"
+          data-sku="<%= p.sku||'' %>"
+          data-price="<%= p.price||0 %>"
+          data-compare-price="<%= p.compare_price||'' %>"
+          data-cost="<%= p.cost||'' %>"
+          data-stock="<%= p.stock||0 %>"
+          data-image-url="<%= p.image_url||'' %>"
+          data-category="<%= p.category||'' %>"
+          data-description="<%= p.description||'' %>"
+          data-status="<%= p.status||'active' %>"
+          onclick="openEditProduct(this)">✏️ แก้ไข</button>
+        <form action="/ecommerce/products/<%= p.id %>/delete" method="POST" style="margin:0;" onsubmit="return confirm('ลบสินค้านี้?')">
+          <button type="submit" class="btn btn-danger btn-xs">ลบ</button>
+        </form>
+      </div>
+    </div>
+    <% }) %>
+  </div>
+  <% } %>
+
+  <!-- MyShop API Key per store -->
+  <% if (stores.length > 0) { %>
+  <div class="card" style="margin-top:20px;">
+    <div class="card-header">
+      <span class="card-title">🔑 MyShop API Key</span>
+      <span style="font-size:12px;color:var(--text-4);">รับ API Key จาก <a href="https://oaplus.line.biz" target="_blank" style="color:var(--primary);">oaplus.line.biz</a> → Developer → API Key</span>
+    </div>
+    <div class="card-body" style="display:flex;flex-direction:column;gap:12px;">
+      <% stores.forEach(s => { %>
+      <form action="/ecommerce/stores/<%= s.id %>/api-key" method="POST" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <span style="font-weight:600;font-size:13.5px;min-width:120px;"><%= s.store_name %></span>
+        <input type="password" name="myshop_api_key" class="form-control" style="flex:1;min-width:200px;"
+          placeholder="ใส่ MyShop API Key"
+          value="<%= s.settings && s.settings.myshop_api_key ? '••••••••' : '' %>">
+        <button type="submit" class="btn btn-primary btn-sm">บันทึก</button>
+      </form>
+      <% }) %>
+    </div>
+  </div>
+  <% } %>
+</div>
+
 <!-- ═══════════════ TAB: SETTINGS ═══════════════ -->
 <div id="tab-settings" class="tab-pane" style="display:<%= activeTab==='settings'?'block':'none' %>">
   <!-- Connected stores -->
@@ -419,7 +582,7 @@
             <td><span class="store-badge"><%= platformIcon[s.platform] || '🏪' %> <%= platformLabel[s.platform] || s.platform %></span></td>
             <td style="font-size:12.5px;"><%= s.sender_name || '-' %></td>
             <td style="font-size:11px;color:var(--text-4);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-              <span id="wh-<%= s.id %>"><%= process.env.APP_URL || 'https://your-domain.com' %>/ecommerce/webhook/<%= s.id %></span>
+              <span id="wh-<%= s.id %>"><%= appUrl %>/ecommerce/webhook/<%= s.id %></span>
               <button onclick="copyText('wh-<%= s.id %>')" class="btn btn-secondary btn-xs" style="margin-left:4px;">คัดลอก</button>
             </td>
             <td><span class="badge <%= s.is_active ? 'badge-success' : 'badge-gray' %>"><%= s.is_active ? 'เปิดใช้' : 'ปิด' %></span></td>
@@ -587,6 +750,27 @@
     </div>
   </div>
 
+  <!-- Webhook diagnostic -->
+  <div class="card" style="margin-top:16px;">
+    <div class="card-header">
+      <span class="card-title">🔔 Webhook Diagnostic</span>
+      <button class="btn btn-secondary btn-sm" onclick="loadWebhookLog()">🔄 รีเฟรช</button>
+    </div>
+    <div class="card-body">
+      <div style="padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;"
+        id="webhookStatusBox"
+        style="background:var(--surface-2);">กด รีเฟรช เพื่อดูว่า LINE ส่ง Webhook มาถึงหรือเปล่า</div>
+      <div id="webhookLogWrap" style="font-size:12px;font-family:monospace;background:var(--surface-2);border-radius:8px;padding:10px;max-height:160px;overflow-y:auto;color:var(--text-3);">
+        (ยังไม่ได้โหลด)
+      </div>
+      <div style="margin-top:12px;font-size:12.5px;color:var(--text-3);line-height:1.8;">
+        📌 ถ้า log ว่างเปล่าหลังจากลูกค้าทัก → <strong>LINE ยังส่ง Webhook ไม่ถึง</strong><br>
+        ให้ไปที่ <a href="https://developers.line.biz" target="_blank" style="color:var(--primary);">LINE Developers Console</a> →
+        Messaging API → Webhook URL → ใส่ URL ด้านบน → กด <strong>Verify</strong> → เปิด <strong>Use webhook: ON</strong>
+      </div>
+    </div>
+  </div>
+
   <!-- How to setup LINE -->
   <div class="card" style="margin-top:16px;">
     <div class="card-header"><span class="card-title">📖 วิธีเชื่อมต่อ LINE OA กับ BizFlow</span></div>
@@ -596,14 +780,159 @@
         <li>ไปที่ <a href="https://developers.line.biz" target="_blank" style="color:var(--primary);">developers.line.biz</a> → Create Provider → Create channel → <strong>Messaging API</strong></li>
         <li>แท็บ <strong>Messaging API</strong> → คัดลอก Channel ID, Channel Secret และ Issue Long-lived Access Token</li>
         <li>กรอกข้อมูลในฟอร์มด้านบน → เชื่อมต่อร้านค้า</li>
-        <li>คัดลอก <strong>Webhook URL</strong> ไปใส่ใน LINE Developers → เปิด <strong>Use webhook: ON</strong></li>
+        <li>คัดลอก <strong>Webhook URL</strong> ไปใส่ใน LINE Developers → กด <strong>Verify</strong> → เปิด <strong>Use webhook: ON</strong></li>
         <li>กด <strong>🔍 ทดสอบ Token</strong> เพื่อตรวจสอบว่าเชื่อมต่อถูกต้อง</li>
         <li>ปิด Auto-reply ใน LINE OA Manager เพื่อให้ตอบเองผ่าน BizFlow</li>
       </ol>
-      <div style="margin-top:12px;padding:10px 14px;background:var(--info-dim);border-radius:8px;font-size:12.5px;color:var(--info);">
-        💡 <strong>ต้องการ HTTPS:</strong> LINE Webhook ต้องใช้ public HTTPS URL — ใช้ <strong>ngrok</strong> ระหว่าง dev หรือ deploy ไปที่ <strong>stdesignlp.com</strong>
+      <div style="margin-top:12px;padding:10px 14px;background:var(--warning-dim);border-radius:8px;font-size:12.5px;color:#92400e;">
+        ⚠️ <strong>สำคัญ:</strong> Webhook URL ต้องเป็น <strong>HTTPS สาธารณะ</strong> เท่านั้น — <code>localhost:3000</code> ใช้ไม่ได้<br>
+        ต้อง deploy บน Netlify หรือใช้ <strong>ngrok</strong> (<code>ngrok http 3000</code>) แล้วเอา URL จาก ngrok ไปใส่แทน
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ═══════ Modal: Add Product ═══════ -->
+<div class="modal-overlay" id="addProductModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title">+ เพิ่มสินค้า</div>
+      <button class="modal-close" onclick="closeModal('addProductModal')">×</button>
+    </div>
+    <form action="/ecommerce/products" method="POST">
+      <div class="modal-body">
+        <% if (stores.length > 1) { %>
+        <div class="form-group">
+          <label class="form-label">ร้านค้า</label>
+          <select name="store_id" class="form-control">
+            <% stores.forEach(s => { %><option value="<%= s.id %>"><%= s.store_name %></option><% }) %>
+          </select>
+        </div>
+        <% } else if (stores.length === 1) { %>
+        <input type="hidden" name="store_id" value="<%= stores[0].id %>">
+        <% } %>
+        <div class="form-group">
+          <label class="form-label">ชื่อสินค้า *</label>
+          <input type="text" name="name" class="form-control" required>
+        </div>
+        <div class="form-row form-row-2">
+          <div class="form-group">
+            <label class="form-label">SKU</label>
+            <input type="text" name="sku" class="form-control">
+          </div>
+          <div class="form-group">
+            <label class="form-label">หมวดหมู่</label>
+            <input type="text" name="category" class="form-control">
+          </div>
+        </div>
+        <div class="form-row form-row-3">
+          <div class="form-group">
+            <label class="form-label">ราคาขาย</label>
+            <input type="number" name="price" class="form-control" step="0.01" min="0" value="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">ราคาก่อนลด</label>
+            <input type="number" name="compare_price" class="form-control" step="0.01" min="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">ต้นทุน</label>
+            <input type="number" name="cost" class="form-control" step="0.01" min="0">
+          </div>
+        </div>
+        <div class="form-row form-row-2">
+          <div class="form-group">
+            <label class="form-label">จำนวนสต็อก</label>
+            <input type="number" name="stock" class="form-control" value="0" min="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">สถานะ</label>
+            <select name="status" class="form-control">
+              <option value="active">กำลังขาย</option>
+              <option value="inactive">ปิด</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">URL รูปภาพ</label>
+          <input type="url" name="image_url" class="form-control" placeholder="https://...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">คำอธิบาย</label>
+          <textarea name="description" class="form-control" rows="2"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('addProductModal')">ยกเลิก</button>
+        <button type="submit" class="btn btn-primary">บันทึกสินค้า</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ═══════ Modal: Edit Product ═══════ -->
+<div class="modal-overlay" id="editProductModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title">✏️ แก้ไขสินค้า</div>
+      <button class="modal-close" onclick="closeModal('editProductModal')">×</button>
+    </div>
+    <form id="editProductForm" method="POST">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">ชื่อสินค้า *</label>
+          <input type="text" name="name" id="ep_name" class="form-control" required>
+        </div>
+        <div class="form-row form-row-2">
+          <div class="form-group">
+            <label class="form-label">SKU</label>
+            <input type="text" name="sku" id="ep_sku" class="form-control">
+          </div>
+          <div class="form-group">
+            <label class="form-label">หมวดหมู่</label>
+            <input type="text" name="category" id="ep_category" class="form-control">
+          </div>
+        </div>
+        <div class="form-row form-row-3">
+          <div class="form-group">
+            <label class="form-label">ราคาขาย</label>
+            <input type="number" name="price" id="ep_price" class="form-control" step="0.01" min="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">ราคาก่อนลด</label>
+            <input type="number" name="compare_price" id="ep_compare_price" class="form-control" step="0.01" min="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">ต้นทุน</label>
+            <input type="number" name="cost" id="ep_cost" class="form-control" step="0.01" min="0">
+          </div>
+        </div>
+        <div class="form-row form-row-2">
+          <div class="form-group">
+            <label class="form-label">จำนวนสต็อก</label>
+            <input type="number" name="stock" id="ep_stock" class="form-control" min="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">สถานะ</label>
+            <select name="status" id="ep_status" class="form-control">
+              <option value="active">กำลังขาย</option>
+              <option value="inactive">ปิด</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">URL รูปภาพ</label>
+          <input type="url" name="image_url" id="ep_image_url" class="form-control" placeholder="https://...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">คำอธิบาย</label>
+          <textarea name="description" id="ep_description" class="form-control" rows="2"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('editProductModal')">ยกเลิก</button>
+        <button type="submit" class="btn btn-primary">บันทึก</button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -680,8 +1009,23 @@
           <input type="number" id="qrAmount" class="form-control" placeholder="0.00" step="0.01" min="0" oninput="renderQR()">
         </div>
       </div>
-      <div id="qrCanvas" style="display:flex;justify-content:center;margin:10px 0 10px;"></div>
-      <div id="qrStatus" style="font-size:12.5px;color:var(--text-4);">กรอกเบอร์โทร/Tax ID เพื่อสร้าง QR</div>
+      <!-- ปรับแต่งกรอบ + โลโก้ -->
+      <div style="display:flex;gap:8px;margin:10px 0 12px;text-align:left;align-items:flex-end;">
+        <div>
+          <label style="font-size:11.5px;font-weight:600;color:var(--text-3);display:block;margin-bottom:4px;">🎨 สีกรอบ</label>
+          <input type="color" id="qrFrameColor" value="#1a56db"
+            style="width:48px;height:36px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;padding:2px;background:none;"
+            oninput="renderQR()">
+        </div>
+        <div style="flex:1;">
+          <label style="font-size:11.5px;font-weight:600;color:var(--text-3);display:block;margin-bottom:4px;">🖼️ URL โลโก้ตรงกลาง (ไม่บังคับ)</label>
+          <input type="url" id="qrLogoUrl" class="form-control" style="font-size:12.5px;"
+            placeholder="https://... ลิงก์รูปโลโก้ร้าน" oninput="renderQR()">
+        </div>
+      </div>
+
+      <div id="qrCanvas" style="display:flex;justify-content:center;margin:0 0 8px;"></div>
+      <div id="qrStatus" style="font-size:12px;color:var(--text-4);margin-bottom:4px;">กรอกเบอร์โทร/Tax ID เพื่อสร้าง QR</div>
 
       <!-- ข้อความอัตโนมัติ -->
       <div style="text-align:left;margin-top:14px;border-top:1px solid var(--border);padding-top:14px;">
@@ -853,6 +1197,8 @@ function switchTab(name) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'))
   event.target.classList.add('active')
   history.replaceState(null, '', '/ecommerce?tab=' + name)
+  if (name === 'chat') startChatPolling()
+  else stopChatPolling()
 }
 
 // Modals
@@ -961,6 +1307,11 @@ function selectChat(el) {
 
   loadChatMessages()
   document.getElementById('cwInput').focus()
+  // ล้าง unread badge
+  const unreadEl = document.getElementById('unread-' + id)
+  if (unreadEl) unreadEl.textContent = ''
+  // mark as read ใน DB
+  fetch('/ecommerce/chat/' + id + '/read', { method: 'POST' }).catch(() => {})
 }
 
 async function loadChatMessages() {
@@ -1014,6 +1365,18 @@ async function sendChatMessage() {
   if (!r.ok) { row.style.opacity = '0.5'; row.title = 'ส่งไม่สำเร็จ' }
 }
 
+// parse JSON safely — ถ้า server ส่ง HTML (redirect / error page) กลับมาจะโชว์ error ที่อ่านออก
+async function apiJson(response) {
+  const ct = response.headers.get('content-type') || ''
+  if (!ct.includes('application/json')) {
+    const hint = response.status === 401 ? 'session หมดอายุ กรุณา reload หน้าแล้วล็อกอินใหม่'
+               : response.status === 404 ? 'ไม่พบ API endpoint — กรุณา restart server'
+               : `Server ตอบกลับ HTTP ${response.status} (ไม่ใช่ JSON)`
+    throw new Error(hint)
+  }
+  return response.json()
+}
+
 // ─── Image upload ─────────────────────────────────────────────────────────────
 function handleImageUpload(input) {
   const file = input.files[0]
@@ -1021,7 +1384,7 @@ function handleImageUpload(input) {
   pendingImageFile = file
   const reader = new FileReader()
   reader.onload = e => {
-    document.getElementById('imgPreview').src  = e.target.result
+    document.getElementById('imgPreview').src = e.target.result
     document.getElementById('imgPreviewWrap').style.display = 'block'
   }
   reader.readAsDataURL(file)
@@ -1031,15 +1394,35 @@ function clearImage() {
   document.getElementById('imgPreviewWrap').style.display = 'none'
   document.getElementById('imgPreview').src = ''
 }
+
+// แปลง File → base64 string (ไม่มี prefix data:...)
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = e => resolve(e.target.result.split(',')[1])
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+// ส่งรูปเป็น base64 JSON — ทำงานได้ทั้ง localhost และ Netlify serverless
 async function sendImage() {
   if (!pendingImageFile || !activeChatId) return
-  const fd = new FormData()
-  fd.append('image', pendingImageFile)
+  const file = pendingImageFile
   clearImage()
-  const r = await fetch('/ecommerce/chat/' + activeChatId + '/upload', { method:'POST', body:fd })
-  const j = await r.json()
-  if (j.ok) { await loadChatMessages() }
-  else { alert('ส่งรูปไม่สำเร็จ: ' + j.error) }
+  try {
+    const base64 = await fileToBase64(file)
+    const r = await fetch('/ecommerce/chat/' + activeChatId + '/upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageBase64: base64, mimeType: file.type, filename: file.name || 'image.jpg' })
+    })
+    const j = await apiJson(r)
+    if (j.ok) { await loadChatMessages() }
+    else { alert('ส่งรูปไม่สำเร็จ: ' + j.error) }
+  } catch (e) {
+    alert('ส่งรูปไม่สำเร็จ: ' + e.message)
+  }
 }
 
 // ─── Filter chat list ─────────────────────────────────────────────────────────
@@ -1049,6 +1432,80 @@ function filterChatList(q) {
     el.style.display = el.dataset.name.toLowerCase().includes(lower) ? '' : 'none'
   })
 }
+
+// ─── Chat auto-poll ───────────────────────────────────────────────────────────
+let _chatPollTimer = null
+
+function startChatPolling() {
+  if (_chatPollTimer) return
+  _chatPollTimer = setInterval(async () => {
+    // refresh messages ของแชทที่เปิดอยู่
+    if (activeChatId) await loadChatMessages()
+    // refresh chat list sidebar
+    await refreshChatList()
+  }, 5000)
+}
+
+function stopChatPolling() {
+  clearInterval(_chatPollTimer)
+  _chatPollTimer = null
+}
+
+async function refreshChatList() {
+  try {
+    const chats = await fetch('/ecommerce/api/chats').then(r => r.json())
+    const list = document.getElementById('chatList')
+    if (!list || !Array.isArray(chats)) return
+
+    chats.forEach(c => {
+      const existing = list.querySelector(`.chat-item[data-id="${c.id}"]`)
+      if (!existing) {
+        // แชทใหม่ — เพิ่มขึ้นบนสุด
+        const av = (c.customer_name || '?')[0].toUpperCase()
+        const timeStr = c.last_message_at ? new Date(c.last_message_at).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}) : ''
+        const div = document.createElement('div')
+        div.className = 'chat-item'
+        div.dataset.id = c.id
+        div.dataset.name = c.customer_name || 'ลูกค้า'
+        div.dataset.avatar = av
+        div.onclick = function(){ selectChat(this) }
+        div.innerHTML = `
+          <div class="chat-avatar">${escHtml(av)}</div>
+          <div class="chat-info">
+            <div class="chat-name">${escHtml(c.customer_name || 'ลูกค้า')}</div>
+            <div class="chat-preview" id="preview-${c.id}">${escHtml(c.last_message || '')}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+            <div class="chat-time" id="time-${c.id}">${timeStr}</div>
+            ${c.unread_count > 0 ? `<div class="chat-unread" id="unread-${c.id}">${c.unread_count}</div>` : `<div id="unread-${c.id}"></div>`}
+          </div>`
+        list.prepend(div)
+      } else {
+        // อัปเดต preview + unread ของแชทที่มีอยู่แล้ว
+        const previewEl = document.getElementById('preview-' + c.id)
+        const unreadEl  = document.getElementById('unread-' + c.id)
+        const timeEl    = document.getElementById('time-' + c.id)
+        if (previewEl) previewEl.textContent = c.last_message || ''
+        if (timeEl && c.last_message_at) timeEl.textContent = new Date(c.last_message_at).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})
+        if (unreadEl) {
+          if (c.id === activeChatId) {
+            unreadEl.textContent = ''
+          } else if (c.unread_count > 0) {
+            unreadEl.className = 'chat-unread'
+            unreadEl.textContent = c.unread_count
+          } else {
+            unreadEl.textContent = ''
+          }
+        }
+      }
+    })
+  } catch(_) {}
+}
+
+// เริ่ม polling เมื่อเปิด tab แชท
+document.addEventListener('DOMContentLoaded', () => {
+  if (document.getElementById('tab-chat')?.style.display !== 'none') startChatPolling()
+})
 
 // ─── สร้างบิลจากแชท ───────────────────────────────────────────────────────────
 function openCreateOrderForChat() {
@@ -1062,24 +1519,19 @@ function openCreateOrderForChat() {
 
 // ─── QR PromptPay ─────────────────────────────────────────────────────────────
 const QR_DEFAULT_TEMPLATE = 'กรุณาโอน {amount} บาท\nขอบคุณที่ใช้บริการนะคะ 🙏'
-let qrInstance = null
+let _qrPayload = ''
+let _qrDebounce = null
+
 function openQRModal() {
   openModal('qrModal')
   const ta = document.getElementById('qrAutoMsg')
-  if (!ta.value) {
-    ta.value = localStorage.getItem('bizflow_qr_template') || QR_DEFAULT_TEMPLATE
-  }
+  if (!ta.value) ta.value = localStorage.getItem('bizflow_qr_template') || QR_DEFAULT_TEMPLATE
   renderQR()
 }
 
 function generatePromptPayPayload(raw, amount) {
   const cleaned = raw.replace(/\D/g,'')
-  let id
-  if (cleaned.length >= 10 && cleaned.startsWith('0')) {
-    id = '0066' + cleaned.slice(1)
-  } else {
-    id = cleaned
-  }
+  let id = (cleaned.length >= 10 && cleaned.startsWith('0')) ? '0066' + cleaned.slice(1) : cleaned
   const f = (tag, v) => tag + v.length.toString().padStart(2,'0') + v
   const ma = f('00','A000000677010111') + f('01', id)
   let data = f('00','01') + f('01','12') + f('29', ma) + f('53','764') +
@@ -1093,73 +1545,165 @@ function generatePromptPayPayload(raw, amount) {
   return data + crc.toString(16).toUpperCase().padStart(4,'0')
 }
 
+// debounce render เพื่อไม่ให้ rebuild ทุก keystroke
 function renderQR() {
+  clearTimeout(_qrDebounce)
+  _qrDebounce = setTimeout(_doRenderQR, 280)
+}
+
+function _doRenderQR() {
   const id  = (document.getElementById('qrPromptPayId').value || '').trim()
-  const amt = document.getElementById('qrAmount').value || 0
-  const wrap = document.getElementById('qrCanvas')
+  const wrap   = document.getElementById('qrCanvas')
   const status = document.getElementById('qrStatus')
-  if (!id) { wrap.innerHTML=''; status.textContent='กรอกเบอร์โทร/Tax ID เพื่อสร้าง QR'; return }
+  if (!id) { wrap.innerHTML = ''; _qrPayload = ''; status.textContent = 'กรอกเบอร์โทร/Tax ID เพื่อสร้าง QR'; return }
+  if (!window.QRCode) { status.textContent = 'กำลังโหลด QR library...'; return }
   try {
-    const payload = generatePromptPayPayload(id, amt)
-    wrap.innerHTML = ''
-    if (window.QRCode) {
-      new QRCode(wrap, { text: payload, width:200, height:200, correctLevel:QRCode.CorrectLevel.M })
-      status.textContent = `PromptPay: ${id} ${parseFloat(amt)>0?'฿'+parseFloat(amt).toLocaleString('th-TH',{minimumFractionDigits:2}):''}`
-    } else {
-      status.textContent = 'กำลังโหลด QR library...'
-    }
+    const amt = document.getElementById('qrAmount').value || 0
+    _qrPayload = generatePromptPayPayload(id, amt)
+    status.textContent = `PromptPay: ${id}${parseFloat(amt)>0?' · ฿'+parseFloat(amt).toLocaleString('th-TH',{minimumFractionDigits:2}):''}`
+    buildQRCanvas().then(c => { if (!c) return; wrap.innerHTML = ''; c.style.maxWidth='100%'; wrap.appendChild(c) })
   } catch(e) { status.textContent = 'ข้อมูลไม่ถูกต้อง' }
 }
 
+// สร้าง canvas ที่มีกรอบสวย + โลโก้ตรงกลาง
+function buildQRCanvas() {
+  return new Promise(resolve => {
+    if (!_qrPayload || !window.QRCode) { resolve(null); return }
+
+    const color   = document.getElementById('qrFrameColor').value || '#1a56db'
+    const logoUrl = (document.getElementById('qrLogoUrl').value || '').trim()
+    const amt     = parseFloat(document.getElementById('qrAmount').value) || 0
+    const idText  = document.getElementById('qrPromptPayId').value || ''
+    const QS = 210, PAD = 18, HDR = 64, FTR = 44
+    const W = QS + PAD * 2, H = QS + PAD * 2 + HDR + FTR
+
+    // render QR ดิบไว้ใน hidden div
+    const tmp = document.createElement('div')
+    tmp.style.cssText = 'position:fixed;left:-9999px;top:-9999px;'
+    document.body.appendChild(tmp)
+    new QRCode(tmp, { text: _qrPayload, width: QS, height: QS, correctLevel: QRCode.CorrectLevel.H })
+
+    setTimeout(async () => {
+      const qrC = tmp.querySelector('canvas')
+      document.body.removeChild(tmp)
+
+      const c = document.createElement('canvas')
+      c.width = W; c.height = H
+      const ctx = c.getContext('2d')
+
+      // เงา + พื้นขาว
+      ctx.shadowColor = 'rgba(0,0,0,0.12)'; ctx.shadowBlur = 14; ctx.shadowOffsetY = 4
+      ctx.fillStyle = '#ffffff'; rrect(ctx,0,0,W,H,16); ctx.fill()
+      ctx.shadowBlur = 0; ctx.shadowOffsetY = 0
+
+      // header สี
+      ctx.fillStyle = color; rrectTop(ctx,0,0,W,HDR,16); ctx.fill()
+      ctx.fillStyle = '#fff'; ctx.textAlign = 'center'
+      ctx.font = 'bold 16px "Segoe UI",sans-serif'
+      ctx.fillText('💳  PromptPay', W/2, 28)
+      ctx.font = '13px "Segoe UI",sans-serif'
+      ctx.fillText(amt > 0 ? '฿' + amt.toLocaleString('th-TH',{minimumFractionDigits:2}) : 'สแกนเพื่อชำระเงิน', W/2, 50)
+
+      // วาด QR
+      const qrX = PAD, qrY = HDR + PAD
+      if (qrC) ctx.drawImage(qrC, qrX, qrY, QS, QS)
+
+      // กรอบ border
+      ctx.strokeStyle = color; ctx.lineWidth = 3; rrect(ctx,1.5,1.5,W-3,H-3,16); ctx.stroke()
+
+      // footer
+      const fy = qrY + QS + 10
+      ctx.fillStyle = '#9ca3af'; ctx.font = '11px "Segoe UI",sans-serif'; ctx.textAlign = 'center'
+      ctx.fillText(idText, W/2, fy + 10)
+      ctx.fillStyle = color; ctx.font = 'bold 10px "Segoe UI",sans-serif'
+      ctx.fillText('Thai QR Payment Standard', W/2, fy + 28)
+
+      // โลโก้ตรงกลาง QR
+      if (logoUrl) {
+        try { await drawLogoOn(ctx, logoUrl, W/2, qrY + QS/2, 46) } catch(_) {}
+      }
+
+      resolve(c)
+    }, 100)
+  })
+}
+
+// วาดโลโก้วงกลมลงบน canvas
+function drawLogoOn(ctx, url, cx, cy, size) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      // วงขาวรองรับ
+      ctx.beginPath(); ctx.arc(cx, cy, size/2 + 5, 0, Math.PI*2)
+      ctx.fillStyle = '#fff'; ctx.fill()
+      // clip วงกลมแล้ววาดรูป
+      ctx.save()
+      ctx.beginPath(); ctx.arc(cx, cy, size/2, 0, Math.PI*2); ctx.clip()
+      ctx.drawImage(img, cx-size/2, cy-size/2, size, size)
+      ctx.restore()
+      resolve()
+    }
+    img.onerror = reject
+    img.src = url
+  })
+}
+
+// helper rounded rect (ครบ 4 มุม)
+function rrect(ctx, x, y, w, h, r) {
+  ctx.beginPath()
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.arcTo(x+w,y,x+w,y+r,r)
+  ctx.lineTo(x+w,y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r)
+  ctx.lineTo(x+r,y+h); ctx.arcTo(x,y+h,x,y+h-r,r)
+  ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r); ctx.closePath()
+}
+// helper rounded rect เฉพาะมุมบน (สำหรับ header)
+function rrectTop(ctx, x, y, w, h, r) {
+  ctx.beginPath()
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.arcTo(x+w,y,x+w,y+r,r)
+  ctx.lineTo(x+w,y+h); ctx.lineTo(x,y+h)
+  ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r); ctx.closePath()
+}
+
 function downloadQR() {
-  const canvas = document.querySelector('#qrCanvas canvas')
-  if (!canvas) { alert('สร้าง QR ก่อน'); return }
-  const a = document.createElement('a')
-  a.download = 'promptpay-qr.png'
-  a.href = canvas.toDataURL()
-  a.click()
+  buildQRCanvas().then(c => {
+    if (!c) { alert('สร้าง QR ก่อน'); return }
+    const a = document.createElement('a'); a.download = 'promptpay-qr.png'; a.href = c.toDataURL(); a.click()
+  })
 }
 
 function saveQRTemplate() {
   const msg = document.getElementById('qrAutoMsg').value
   localStorage.setItem('bizflow_qr_template', msg)
-  const btn = event.target
-  btn.textContent = '✓ บันทึกแล้ว'
+  const btn = event.target; btn.textContent = '✓ บันทึกแล้ว'
   setTimeout(() => { btn.textContent = '💾 บันทึก' }, 1800)
 }
 
 async function sendQRToChat() {
   if (!activeChatId) { alert('เลือกแชทก่อน แล้วค่อยส่ง QR'); closeModal('qrModal'); return }
-  const canvas = document.querySelector('#qrCanvas canvas')
-  if (!canvas) { alert('สร้าง QR ก่อน'); return }
-
+  if (!_qrPayload) { alert('สร้าง QR ก่อน'); return }
   const amt    = parseFloat(document.getElementById('qrAmount').value) || 0
   const rawMsg = (document.getElementById('qrAutoMsg').value || '').trim()
-  const autoMsg = rawMsg
-    ? rawMsg.replace(/\{amount\}/gi, amt > 0 ? amt.toLocaleString('th-TH', { minimumFractionDigits: 2 }) : '')
-    : ''
-
-  canvas.toBlob(async blob => {
-    // ส่ง QR image ก่อน
-    const fd = new FormData()
-    fd.append('image', blob, 'qr-payment.png')
-    const r = await fetch('/ecommerce/chat/' + activeChatId + '/upload', { method: 'POST', body: fd })
-    const j = await r.json()
-
-    if (!j.ok) { alert('ส่งไม่สำเร็จ: ' + j.error); return }
-
-    // ส่งข้อความอัตโนมัติต่อ (ถ้ามี)
+  const autoMsg = rawMsg ? rawMsg.replace(/\{amount\}/gi, amt > 0 ? amt.toLocaleString('th-TH',{minimumFractionDigits:2}) : '') : ''
+  try {
+    const c = await buildQRCanvas()
+    if (!c) { alert('สร้าง QR ก่อน'); return }
+    const base64 = c.toDataURL('image/png').split(',')[1]
+    const r = await fetch('/ecommerce/chat/' + activeChatId + '/upload', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageBase64: base64, mimeType: 'image/png', filename: 'qr-payment.png' })
+    })
+    const j = await apiJson(r)
+    if (!j.ok) { alert('ส่ง QR ไม่สำเร็จ: ' + j.error); return }
     if (autoMsg) {
       await fetch('/ecommerce/chat/' + activeChatId + '/reply', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: autoMsg })
       })
     }
-
     closeModal('qrModal')
     await loadChatMessages()
-  })
+  } catch (e) { alert('ส่ง QR ไม่สำเร็จ: ' + e.message) }
 }
 
 function closePanel() {
@@ -1248,11 +1792,83 @@ function readCSVFile(input) {
   reader.readAsText(file, 'UTF-8')
 }
 
+// ─── Products tab ─────────────────────────────────────────────────────────────
+function filterProducts(q) {
+  const lower = q.toLowerCase()
+  document.querySelectorAll('#productGrid .product-card').forEach(card => {
+    const name = card.dataset.name || ''
+    const sku  = card.dataset.sku  || ''
+    card.style.display = (name.includes(lower) || sku.includes(lower)) ? '' : 'none'
+  })
+}
+
+function filterProductsByStatus(val) {
+  document.querySelectorAll('#productGrid .product-card').forEach(card => {
+    if (!val) { card.style.display = ''; return }
+    const status = card.dataset.status
+    if (val === 'out_of_stock') {
+      const stockEl = card.querySelector('.product-stock')
+      card.style.display = (stockEl && stockEl.textContent.includes('❌')) ? '' : 'none'
+    } else {
+      card.style.display = status === val ? '' : 'none'
+    }
+  })
+}
+
+function openEditProduct(btn) {
+  const d = btn.dataset
+  document.getElementById('editProductForm').action = '/ecommerce/products/' + d.id + '/update'
+  document.getElementById('ep_name').value          = d.name || ''
+  document.getElementById('ep_sku').value           = d.sku || ''
+  document.getElementById('ep_price').value         = d.price || ''
+  document.getElementById('ep_compare_price').value = d.comparePrice || ''
+  document.getElementById('ep_cost').value          = d.cost || ''
+  document.getElementById('ep_stock').value         = d.stock || 0
+  document.getElementById('ep_image_url').value     = d.imageUrl || ''
+  document.getElementById('ep_category').value      = d.category || ''
+  document.getElementById('ep_description').value   = d.description || ''
+  document.getElementById('ep_status').value        = d.status || 'active'
+  openModal('editProductModal')
+}
+
+// ─── Webhook diagnostic ────────────────────────────────────────────────────────
+async function loadWebhookLog() {
+  try {
+    const logs = await fetch('/ecommerce/api/webhook-log').then(r => r.json())
+    const wrap = document.getElementById('webhookLogWrap')
+    const box  = document.getElementById('webhookStatusBox')
+    if (!logs.length) {
+      wrap.textContent = '(ยังไม่มี Webhook เข้ามาเลยตั้งแต่ server start)'
+      box.style.background = 'var(--danger-dim)'
+      box.style.color = 'var(--danger)'
+      box.innerHTML = '❌ LINE ยังไม่ได้ส่ง Webhook มา — ตรวจสอบ Webhook URL ใน LINE Developers Console'
+    } else {
+      wrap.innerHTML = logs.map(l =>
+        `<div style="padding:3px 0;border-bottom:1px solid var(--border-2);">[${l.time.slice(11,19)}] store:${l.storeId.slice(0,8)}… events:${l.events} — ${escHtml(l.body)}</div>`
+      ).reverse().join('')
+      box.style.background = 'var(--success-dim)'
+      box.style.color = 'var(--success)'
+      box.innerHTML = `✅ LINE ส่ง Webhook มาแล้ว ${logs.length} ครั้ง — ระบบทำงานปกติ`
+    }
+  } catch(e) {
+    document.getElementById('webhookLogWrap').textContent = 'โหลดไม่ได้: ' + e.message
+  }
+}
+
 // Handle URL tab param
 const urlP = new URLSearchParams(location.search)
-if (urlP.get('tab') && urlP.get('tab') !== 'orders') {
-  const btn = document.querySelector(`.tab-btn:nth-child(${urlP.get('tab')==='chat'?2:3})`)
-  if (btn) { document.querySelectorAll('.tab-pane').forEach(p=>p.style.display='none'); document.getElementById('tab-'+urlP.get('tab')).style.display='block'; btn.classList.add('active'); }
+const _tabParam = urlP.get('tab')
+if (_tabParam && _tabParam !== 'orders') {
+  const _tabMap = { chat: 2, products: 3, settings: 4 }
+  const _nth = _tabMap[_tabParam]
+  const _btn = _nth ? document.querySelector(`.tab-btn:nth-child(${_nth})`) : null
+  if (_btn) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.style.display = 'none')
+    const _pane = document.getElementById('tab-' + _tabParam)
+    if (_pane) _pane.style.display = 'block'
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'))
+    _btn.classList.add('active')
+  }
 }
 </script>
 
