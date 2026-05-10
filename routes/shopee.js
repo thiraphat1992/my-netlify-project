@@ -17,12 +17,14 @@ function shopeeSign(partnerId, partnerKey, apiPath, ts, accessToken, shopId) {
 function shopeeCall(store, method, apiPath, params = null) {
   return new Promise((resolve, reject) => {
     const ts   = Math.floor(Date.now() / 1000)
-    const pid  = store.channel_id
+    const pid  = String(store.channel_id)
     const pkey = store.channel_secret
-    const sid  = store.shop_id
+    const sid  = String(store.shop_id)
     const tok  = store.access_token
     const sign = shopeeSign(pid, pkey, apiPath, ts, tok, sid)
-    const baseQs = `partner_id=${pid}&timestamp=${ts}&sign=${sign}&shop_id=${sid}&access_token=${tok}`
+
+    // encode access_token — it may contain +/= characters
+    const baseQs = `partner_id=${pid}&timestamp=${ts}&sign=${sign}&shop_id=${sid}&access_token=${encodeURIComponent(tok)}`
 
     const isGet = method.toUpperCase() === 'GET'
     let reqPath, bodyStr = ''
@@ -33,23 +35,23 @@ function shopeeCall(store, method, apiPath, params = null) {
         : ''
       reqPath = `${apiPath}?${baseQs}${extraQs ? '&' + extraQs : ''}`
     } else {
-      reqPath  = `${apiPath}?${baseQs}`
-      bodyStr  = params ? JSON.stringify(params) : ''
+      reqPath = `${apiPath}?${baseQs}`
+      bodyStr = params ? JSON.stringify(params) : ''
     }
 
-    const options = {
-      hostname: SHOPEE_HOST, port: 443,
-      path: reqPath,
-      method: method.toUpperCase(),
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(bodyStr)
-      }
-    }
+    console.log(`[Shopee] ${method.toUpperCase()} https://${SHOPEE_HOST}${reqPath.split('?')[0]} | pid=${pid} sid=${sid} tok_len=${tok?.length}`)
+
+    const headers = isGet
+      ? {}
+      : { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(bodyStr) }
+
+    const options = { hostname: SHOPEE_HOST, port: 443, path: reqPath, method: method.toUpperCase(), headers }
+
     const req = https.request(options, res => {
       let data = ''
       res.on('data', c => data += c)
       res.on('end', () => {
+        console.log(`[Shopee] response status=${res.statusCode} body_start=${data.slice(0, 120)}`)
         try { resolve(JSON.parse(data)) }
         catch (e) { reject(new Error(`Shopee parse error: ${data.slice(0, 300)}`)) }
       })
