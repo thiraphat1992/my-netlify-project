@@ -25,6 +25,10 @@ router.get('/', requireAuth, async (req, res) => {
       shopeeStores: shopeeStores || [],
       lazadaStores: lazadaStores || [],
       ecStores: ecStores || [],
+      nodeEnv: process.env.NODE_ENV || 'development',
+      appUrl: process.env.APP_URL || '',
+      lineChannelId: !!process.env.LINE_CHANNEL_ID,
+      lineAccessToken: !!process.env.LINE_ACCESS_TOKEN,
       success: req.flash('success'),
       error: req.flash('error')
     })
@@ -33,6 +37,7 @@ router.get('/', requireAuth, async (req, res) => {
     res.render('settings/index', {
       title: 'ตั้งค่าระบบ', activePage: 'settings',
       cfg: {}, shopeeStores: [], lazadaStores: [], ecStores: [],
+      nodeEnv: 'development', appUrl: '', lineChannelId: false, lineAccessToken: false,
       success: [], error: [err.message]
     })
   }
