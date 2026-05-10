@@ -13,32 +13,32 @@
 
 <div class="stats-grid stats-4">
   <div class="stat-card">
-    <div class="stat-icon" style="background:rgba(16,185,129,0.1);">💰</div>
+    <div class="stat-icon" style="background:rgba(34,197,94,0.12);">💰</div>
     <div class="stat-label">รายรับเดือนนี้</div>
-    <div class="stat-value" style="color:#10b981;">฿<%= (stats.totalIncome || 0).toLocaleString('th-TH', {minimumFractionDigits:0}) %></div>
+    <div class="stat-value" style="color:#22c55e;">฿<%= (stats.totalIncome || 0).toLocaleString('th-TH', {minimumFractionDigits:0}) %></div>
     <div class="stat-sub">รายรับสุทธิ</div>
   </div>
   <div class="stat-card">
-    <div class="stat-icon" style="background:rgba(239,68,68,0.1);">💸</div>
+    <div class="stat-icon" style="background:rgba(239,68,68,0.12);">💸</div>
     <div class="stat-label">รายจ่ายเดือนนี้</div>
     <div class="stat-value" style="color:#ef4444;">฿<%= (stats.totalExpense || 0).toLocaleString('th-TH', {minimumFractionDigits:0}) %></div>
     <div class="stat-sub">รายจ่ายสุทธิ</div>
   </div>
   <div class="stat-card">
-    <div class="stat-icon" style="background:rgba(99,102,241,0.1);">📊</div>
+    <div class="stat-icon" style="background:rgba(249,115,22,0.12);">📊</div>
     <div class="stat-label">กำไรสุทธิ</div>
-    <div class="stat-value" style="color:<%= (stats.balance||0) >= 0 ? '#6366f1' : '#ef4444' %>;">฿<%= (stats.balance || 0).toLocaleString('th-TH', {minimumFractionDigits:0}) %></div>
+    <div class="stat-value" style="color:<%= (stats.balance||0) >= 0 ? '#f97316' : '#ef4444' %>;">฿<%= (stats.balance || 0).toLocaleString('th-TH', {minimumFractionDigits:0}) %></div>
     <div class="stat-sub">รายรับ - รายจ่าย</div>
   </div>
   <div class="stat-card">
-    <div class="stat-icon" style="background:rgba(139,92,246,0.1);">👥</div>
+    <div class="stat-icon" style="background:rgba(251,191,36,0.12);">👥</div>
     <div class="stat-label">พนักงานทั้งหมด</div>
-    <div class="stat-value"><%= stats.totalEmployees || 0 %></div>
+    <div class="stat-value" style="color:#fbbf24;"><%= stats.totalEmployees || 0 %></div>
     <div class="stat-sub">คน (active)</div>
   </div>
 </div>
 
-<div style="display:grid;grid-template-columns:3fr 2fr;gap:20px;">
+<div class="two-col-grid">
   <!-- รายการล่าสุด -->
   <div class="card">
     <div class="card-header">
@@ -61,7 +61,7 @@
               <td style="color:var(--text-3);font-size:12.5px;"><%= new Date(t.transaction_date).toLocaleDateString('th-TH', {day:'numeric',month:'short'}) %></td>
               <td><%= t.description %></td>
               <td><span class="badge <%= t.type === 'income' ? 'badge-success' : 'badge-danger' %>"><%= t.category?.name || '-' %></span></td>
-              <td style="text-align:right;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;color:<%= t.type==='income'?'#10b981':'#ef4444' %>;">
+              <td style="text-align:right;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;color:<%= t.type==='income'?'#22c55e':'#ef4444' %>;">
                 <%= t.type==='income'?'+':'-' %>฿<%= parseFloat(t.amount).toLocaleString('th-TH',{minimumFractionDigits:2}) %>
               </td>
             </tr>
@@ -82,10 +82,10 @@
     <div class="card">
       <div class="card-header"><span class="card-title">⚡ เมนูด่วน</span></div>
       <div class="card-body" style="display:flex;flex-direction:column;gap:8px;">
-        <a href="/sales/new" style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--primary-dim);border-radius:50px;text-decoration:none;color:var(--primary);font-size:13.5px;font-weight:600;border:1px solid var(--primary-border);transition:all 0.2s;">🧾 <span>สร้างบิลใหม่</span></a>
-        <a href="/income" style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--surface-2);border-radius:50px;text-decoration:none;color:var(--text-2);font-size:13.5px;font-weight:500;border:1px solid var(--border);transition:all 0.2s;">➕ <span>เพิ่มรายรับ</span></a>
-        <a href="/income" style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--surface-2);border-radius:50px;text-decoration:none;color:var(--text-2);font-size:13.5px;font-weight:500;border:1px solid var(--border);transition:all 0.2s;">➖ <span>เพิ่มรายจ่าย</span></a>
-        <a href="/hr/employees/new" style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--surface-2);border-radius:50px;text-decoration:none;color:var(--text-2);font-size:13.5px;font-weight:500;border:1px solid var(--border);transition:all 0.2s;">👤 <span>เพิ่มพนักงาน</span></a>
+        <a href="/sales/new" style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:rgba(249,115,22,0.12);border-radius:50px;text-decoration:none;color:var(--primary);font-size:13.5px;font-weight:600;border:1px solid rgba(249,115,22,0.25);transition:all 0.2s;">🧾 <span>สร้างบิลใหม่</span></a>
+        <a href="/income" style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:#1a1a1a;border-radius:50px;text-decoration:none;color:var(--text-2);font-size:13.5px;font-weight:500;border:1px solid var(--border);transition:all 0.2s;">➕ <span>เพิ่มรายรับ</span></a>
+        <a href="/income" style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:#1a1a1a;border-radius:50px;text-decoration:none;color:var(--text-2);font-size:13.5px;font-weight:500;border:1px solid var(--border);transition:all 0.2s;">➖ <span>เพิ่มรายจ่าย</span></a>
+        <a href="/hr/employees/new" style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:#1a1a1a;border-radius:50px;text-decoration:none;color:var(--text-2);font-size:13.5px;font-weight:500;border:1px solid var(--border);transition:all 0.2s;">👤 <span>เพิ่มพนักงาน</span></a>
       </div>
     </div>
 

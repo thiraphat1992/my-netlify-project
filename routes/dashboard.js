@@ -1,7 +1,7 @@
 const express = require('express')
 const router = express.Router()
 const { requireAuth } = require('../middleware/auth')
-const { supabase } = require('../config/supabase')
+const { supabaseAdmin } = require('../config/supabase')
 
 const dashboardStyles = `
 <style>
@@ -213,15 +213,15 @@ router.get('/', requireAuth, async (req, res) => {
       { data: recentOrders },
       { data: employees }
     ] = await Promise.all([
-      supabase.from('transactions').select('type, amount')
+      supabaseAdmin.from('transactions').select('type, amount')
         .gte('transaction_date', firstDay).lte('transaction_date', lastDay),
-      supabase.from('transactions')
+      supabaseAdmin.from('transactions')
         .select('type, amount, description, transaction_date, category:transaction_categories(name)')
         .order('transaction_date', { ascending: false }).limit(5),
-      supabase.from('sale_orders')
+      supabaseAdmin.from('sale_orders')
         .select('doc_no, doc_type, doc_date, total, payment_status, customer_name')
         .order('doc_date', { ascending: false }).limit(5),
-      supabase.from('employees').select('id').eq('status', 'active')
+      supabaseAdmin.from('employees').select('id').eq('status', 'active')
     ])
 
     let totalIncome = 0, totalExpense = 0

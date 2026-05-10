@@ -34,7 +34,7 @@ router.post('/login', redirectIfAuth, async (req, res) => {
     }
 
     // Get user profile from users table
-    const { data: profile } = await supabase
+    const { data: profile } = await supabaseAdmin
       .from('users')
       .select('*')
       .eq('id', data.user.id)

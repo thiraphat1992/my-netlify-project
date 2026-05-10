@@ -291,7 +291,7 @@
       <div class="order-card-left">
         <div class="order-no">
           <%= platformIcon[order.platform] || '📦' %> <%= platformLabel[order.platform] || order.platform %>
-          <% if (order.platform_order_id) { %> · #<%= order.platform_order_id %><% } %>
+          · <strong><%= order.order_no || order.platform_order_id || ('#' + order.id.slice(0,8).toUpperCase()) %></strong>
           <% if (order.store) { %> · <%= order.store.store_name %><% } %>
         </div>
         <div class="order-customer"><%= order.customer_name || 'ลูกค้า' %></div>

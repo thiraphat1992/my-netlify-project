@@ -1,11 +1,11 @@
 const express = require('express')
 const router = express.Router()
 const { requireAuth } = require('../middleware/auth')
-const { supabase, supabaseAdmin } = require('../config/supabase')
+const { supabaseAdmin } = require('../config/supabase')
 
 router.get('/', requireAuth, async (req, res) => {
   try {
-    const { data: customers } = await supabase
+    const { data: customers } = await supabaseAdmin
       .from('customers').select('*').order('name')
     res.render('customers/index', {
       title: 'ลูกค้า', activePage: 'customers',
@@ -23,7 +23,7 @@ router.get('/', requireAuth, async (req, res) => {
 router.post('/', requireAuth, async (req, res) => {
   const { code, name, tax_id, branch_name, address, province, postal_code, phone, email, contact_person, credit_days } = req.body
   try {
-    const { error } = await supabaseAdmin.from('customers').insert([{
+    const { error } = await supabaseAdminAdmin.from('customers').insert([{
       code: code || null, name,
       tax_id: tax_id || null,
       branch_name: branch_name || 'สำนักงานใหญ่',
@@ -46,7 +46,7 @@ router.post('/', requireAuth, async (req, res) => {
 router.put('/:id', requireAuth, async (req, res) => {
   const { code, name, tax_id, branch_name, address, province, postal_code, phone, email, contact_person, credit_days } = req.body
   try {
-    const { error } = await supabaseAdmin.from('customers').update({
+    const { error } = await supabaseAdminAdmin.from('customers').update({
       code: code || null, name,
       tax_id: tax_id || null,
       branch_name: branch_name || 'สำนักงานใหญ่',
@@ -69,7 +69,7 @@ router.put('/:id', requireAuth, async (req, res) => {
 
 router.delete('/:id', requireAuth, async (req, res) => {
   try {
-    const { error } = await supabaseAdmin.from('customers').delete().eq('id', req.params.id)
+    const { error } = await supabaseAdminAdmin.from('customers').delete().eq('id', req.params.id)
     if (error) throw error
     req.flash('success', 'ลบลูกค้าเรียบร้อยแล้ว')
   } catch (err) {

@@ -8,23 +8,28 @@ async function generateDocNo(docType) {
   const now = new Date()
   const ym = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`
 
-  const { data: seq } = await supabase
+  const { data: seq } = await supabaseAdmin
     .from('doc_sequences').select('*').eq('doc_type', docType).single()
 
   let nextNum = 1
+  const prefix = seq ? seq.prefix : docType.toUpperCase().slice(0, 2)
+
   if (seq) {
     nextNum = (seq.year_month === ym ? seq.last_number : 0) + 1
     await supabaseAdmin.from('doc_sequences')
       .update({ last_number: nextNum, year_month: ym, updated_at: new Date() })
       .eq('doc_type', docType)
+  } else {
+    await supabaseAdmin.from('doc_sequences')
+      .insert({ doc_type: docType, prefix, last_number: 1, year_month: ym })
   }
-  const prefix = seq ? seq.prefix : docType.toUpperCase().slice(0, 2)
+
   return `${prefix}${ym}${String(nextNum).padStart(4, '0')}`
 }
 
 router.get('/', requireAuth, async (req, res) => {
   try {
-    const { data: orders } = await supabase
+    const { data: orders } = await supabaseAdmin
       .from('sale_orders')
       .select('*, customer:customers(name)')
       .order('doc_date', { ascending: false })
@@ -44,8 +49,8 @@ router.get('/', requireAuth, async (req, res) => {
 router.get('/new', requireAuth, async (req, res) => {
   try {
     const [{ data: customers }, { data: products }] = await Promise.all([
-      supabase.from('customers').select('id,name,tax_id,address,branch_name').eq('is_active', true).order('name'),
-      supabase.from('products').select('id,code,name,unit,retail_price,vat_type').eq('is_active', true).order('name')
+      supabaseAdmin.from('customers').select('id,name,tax_id,address,branch_name').eq('is_active', true).order('name'),
+      supabaseAdmin.from('products').select('id,code,name,unit,retail_price,vat_type').eq('is_active', true).order('name')
     ])
     res.render('sales/new', {
       title: 'สร้างงานขายใหม่', activePage: 'sales',
@@ -117,8 +122,8 @@ router.post('/', requireAuth, async (req, res) => {
 router.get('/:id', requireAuth, async (req, res) => {
   try {
     const [{ data: order }, { data: items }] = await Promise.all([
-      supabase.from('sale_orders').select('*, customer:customers(*)').eq('id', req.params.id).single(),
-      supabase.from('sale_order_items').select('*').eq('order_id', req.params.id).order('sort_order')
+      supabaseAdmin.from('sale_orders').select('*, customer:customers(*)').eq('id', req.params.id).single(),
+      supabaseAdmin.from('sale_order_items').select('*').eq('order_id', req.params.id).order('sort_order')
     ])
     if (!order) return res.redirect('/sales')
     res.render('sales/view', {

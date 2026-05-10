@@ -5,6 +5,25 @@ const crypto = require('crypto')
 const { requireAuth } = require('../middleware/auth')
 const { supabase, supabaseAdmin } = require('../config/supabase')
 
+// ─── Generate short order number ─────────────────────────────────────────────
+async function generateOrderNo() {
+  const now = new Date()
+  const ym = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`
+  const { data: seq } = await supabaseAdmin
+    .from('doc_sequences').select('*').eq('doc_type', 'ecommerce_order').single()
+  let nextNum = 1
+  if (seq) {
+    nextNum = (seq.year_month === ym ? seq.last_number : 0) + 1
+    await supabaseAdmin.from('doc_sequences')
+      .update({ last_number: nextNum, year_month: ym, updated_at: new Date() })
+      .eq('doc_type', 'ecommerce_order')
+  } else {
+    await supabaseAdmin.from('doc_sequences')
+      .insert({ doc_type: 'ecommerce_order', prefix: 'EC', last_number: 1, year_month: ym })
+  }
+  return `EC${ym}${String(nextNum).padStart(4, '0')}`
+}
+
 // ─── LINE signature verification ─────────────────────────────────────────────
 function verifyLineSignature(channelSecret, rawBody, signatureHeader) {
   if (!channelSecret || !rawBody || !signatureHeader) return true // skip if no secret configured
@@ -95,9 +114,9 @@ router.get('/', requireAuth, async (req, res) => {
   const { status, store_id, q } = req.query
   try {
     const [{ data: stores }, { data: chatsRaw }, { data: productsRaw }] = await Promise.all([
-      supabase.from('ecommerce_stores').select('*').order('created_at'),
-      supabase.from('ecommerce_chats').select('*').order('last_message_at', { ascending: false }).limit(50),
-      supabase.from('ecommerce_products').select('*, store:ecommerce_stores(store_name)').order('created_at', { ascending: false }).limit(500)
+      supabaseAdmin.from('ecommerce_stores').select('*').order('created_at'),
+      supabaseAdmin.from('ecommerce_chats').select('*').order('last_message_at', { ascending: false }).limit(50),
+      supabaseAdmin.from('ecommerce_products').select('*, store:ecommerce_stores(store_name)').order('created_at', { ascending: false }).limit(500)
     ])
 
     let query = supabase
@@ -155,7 +174,9 @@ router.post('/orders', requireAuth, async (req, res) => {
     const subtotal = itemsArr.reduce((s, item) => s + (parseFloat(item.qty) * parseFloat(item.unit_price) || 0), 0)
     const total = subtotal + (parseFloat(shipping_fee) || 0)
 
+    const order_no = await generateOrderNo()
     const { data: order, error } = await supabaseAdmin.from('ecommerce_orders').insert([{
+      order_no,
       store_id: store_id || null,
       platform: 'manual',
       customer_name, customer_phone,
@@ -249,7 +270,7 @@ router.delete('/orders/:id', requireAuth, async (req, res) => {
 router.post('/chat/:chatId/reply', requireAuth, async (req, res) => {
   const { message } = req.body
   try {
-    const { data: chat } = await supabase.from('ecommerce_chats').select('*, store:ecommerce_stores(access_token)').eq('id', req.params.chatId).single()
+    const { data: chat } = await supabaseAdmin.from('ecommerce_chats').select('*, store:ecommerce_stores(access_token)').eq('id', req.params.chatId).single()
     if (!chat || !chat.platform_chat_id) throw new Error('ไม่พบแชท')
 
     if (chat.store?.access_token && chat.platform_chat_id) {
@@ -428,7 +449,7 @@ async function getOrCreateChat(storeId, userId, accessToken) {
 
 // ─── Verify LINE token (API) ──────────────────────────────────────────────────
 router.get('/api/verify-line/:storeId', requireAuth, async (req, res) => {
-  const { data: store } = await supabase.from('ecommerce_stores')
+  const { data: store } = await supabaseAdmin.from('ecommerce_stores')
     .select('access_token, store_name').eq('id', req.params.storeId).single()
   if (!store) return res.json({ ok: false, error: 'ไม่พบร้านค้า' })
   const result = await verifyLineToken(store.access_token)
@@ -454,7 +475,7 @@ router.post('/import-csv/:storeId', requireAuth, async (req, res) => {
       headers.forEach((h, idx) => { row[h] = (cols[idx] || '').trim() })
 
       const orderId = row['order id'] || row['orderid'] || row['เลขออเดอร์'] || `CSV-${Date.now()}-${i}`
-      const { data: exists } = await supabase.from('ecommerce_orders')
+      const { data: exists } = await supabaseAdmin.from('ecommerce_orders')
         .select('id').eq('platform_order_id', orderId).eq('store_id', storeId).maybeSingle()
       if (exists) continue
 
@@ -514,7 +535,7 @@ function mapCSVStatus(s) {
 
 // ─── Sync from platform ───────────────────────────────────────────────────────
 router.post('/sync/:storeId', requireAuth, async (req, res) => {
-  const { data: store } = await supabase.from('ecommerce_stores').select('*').eq('id', req.params.storeId).single()
+  const { data: store } = await supabaseAdmin.from('ecommerce_stores').select('*').eq('id', req.params.storeId).single()
   if (!store) return res.json({ ok: false, error: 'ไม่พบร้านค้า' })
 
   // ตรวจสอบ token ก่อน sync
@@ -617,7 +638,7 @@ router.post('/products/:id/delete', requireAuth, async (req, res) => {
 // ─── Products: Sync from MyShop API ──────────────────────────────────────────
 router.post('/sync-products/:storeId', requireAuth, async (req, res) => {
   try {
-    const { data: store } = await supabase.from('ecommerce_stores').select('*').eq('id', req.params.storeId).single()
+    const { data: store } = await supabaseAdmin.from('ecommerce_stores').select('*').eq('id', req.params.storeId).single()
     if (!store) { req.flash('error', 'ไม่พบร้านค้า'); return res.redirect('/ecommerce?tab=products') }
 
     const apiKey = store.settings?.myshop_api_key
@@ -692,7 +713,7 @@ router.post('/sync-products/:storeId', requireAuth, async (req, res) => {
 // ─── Stores: update (PUT) — เพิ่ม myshop_api_key ใน settings ─────────────────
 router.post('/stores/:id/api-key', requireAuth, async (req, res) => {
   const { myshop_api_key } = req.body
-  const { data: store } = await supabase.from('ecommerce_stores').select('settings').eq('id', req.params.id).single()
+  const { data: store } = await supabaseAdmin.from('ecommerce_stores').select('settings').eq('id', req.params.id).single()
   const settings = { ...(store?.settings || {}), myshop_api_key: myshop_api_key || null }
   await supabaseAdmin.from('ecommerce_stores').update({ settings }).eq('id', req.params.id)
   req.flash('success', 'บันทึก MyShop API Key แล้ว')

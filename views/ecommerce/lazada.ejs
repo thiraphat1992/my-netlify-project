@@ -1,0 +1,343 @@
+<%- include('../partials/header') %>
+
+<style>
+.platform-tabs { display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
+.platform-tab { padding:8px 18px; border-radius:8px; font-weight:600; font-size:13.5px; text-decoration:none; border:1.5px solid var(--border); color:var(--text-3); transition:.2s; }
+.platform-tab:hover { border-color:var(--primary); color:var(--primary); }
+.platform-tab.tab-sp { background:rgba(238,77,45,.12); color:#ee4d2d; border-color:rgba(238,77,45,.3); }
+.platform-tab.tab-sp:hover { background:#ee4d2d; color:#fff; border-color:#ee4d2d; }
+.platform-tab.tab-lz { background:rgba(15,101,255,.1); color:#0f65ff; border-color:rgba(15,101,255,.25); }
+.platform-tab.tab-lz.active,.platform-tab.tab-lz:hover { background:#0f65ff; color:#fff; border-color:#0f65ff; }
+
+.store-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px; margin-bottom:24px; }
+.store-card { background:var(--surface); border:1.5px solid var(--border); border-radius:12px; padding:16px 18px; }
+.store-card-header { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+.store-logo { width:36px; height:36px; border-radius:8px; background:#0f65ff; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+.store-title { font-weight:700; font-size:15px; }
+.store-meta  { font-size:12px; color:var(--text-3); margin-top:2px; }
+.store-actions { display:flex; gap:8px; margin-top:12px; }
+
+.orders-wrap { background:var(--surface); border:1.5px solid var(--border); border-radius:12px; overflow:hidden; }
+.orders-table { width:100%; border-collapse:collapse; }
+.orders-table th { padding:10px 14px; font-size:11px; font-weight:700; color:var(--text-3); text-transform:uppercase; letter-spacing:.6px; background:var(--surface-2); border-bottom:1px solid var(--border); text-align:left; white-space:nowrap; }
+.orders-table td { padding:10px 14px; border-bottom:1px solid var(--border-2); font-size:13px; vertical-align:middle; }
+.orders-table tr:last-child td { border-bottom:none; }
+.orders-table tr:hover td { background:rgba(255,255,255,.03); }
+
+.badge { display:inline-flex; align-items:center; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:700; }
+.badge-pending   { background:rgba(234,179,8,.12);  color:#eab308; }
+.badge-confirmed { background:rgba(249,115,22,.12); color:#f97316; }
+.badge-packing   { background:rgba(99,102,241,.12); color:#818cf8; }
+.badge-shipped   { background:rgba(59,130,246,.12); color:#60a5fa; }
+.badge-delivered { background:rgba(34,197,94,.12);  color:#22c55e; }
+.badge-cancelled { background:rgba(239,68,68,.12);  color:#f87171; }
+.badge-returned  { background:rgba(156,163,175,.12);color:#9ca3af; }
+
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:1000; display:none; align-items:center; justify-content:center; padding:20px; }
+.modal-box { background:var(--surface); border:1px solid var(--border); border-radius:16px; width:100%; max-width:520px; max-height:90vh; overflow-y:auto; }
+.modal-header { padding:18px 22px 14px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+.modal-title { font-size:16px; font-weight:700; }
+.modal-body { padding:20px 22px; }
+.modal-footer { padding:14px 22px; border-top:1px solid var(--border); display:flex; gap:10px; justify-content:flex-end; }
+</style>
+
+<div class="page-header">
+  <div>
+    <h1>🛒 E-Commerce</h1>
+    <p>จัดการออเดอร์จาก Shopee และ Lazada</p>
+  </div>
+</div>
+
+<!-- Platform Tabs -->
+<div class="platform-tabs">
+  <a href="/ecommerce" class="platform-tab">📦 LINE / MyShop</a>
+  <a href="/shopee" class="platform-tab tab-sp">🛒 Shopee</a>
+  <a href="/lazada" class="platform-tab tab-lz active">🟡 Lazada</a>
+</div>
+
+<% if (error && error.length) { %>
+<div class="alert alert-error" style="margin-bottom:16px;">⚠️ <%= error[0] %></div>
+<% } %>
+<% if (success && success.length) { %>
+<div class="alert alert-success" style="margin-bottom:16px;">✓ <%= success[0] %></div>
+<% } %>
+
+<!-- Stores -->
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+  <h2 style="font-size:15px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;">ร้านค้าที่เชื่อมต่อ</h2>
+  <button class="btn btn-primary btn-sm" onclick="document.getElementById('addStoreModal').classList.add('active')">+ เชื่อมต่อร้านใหม่</button>
+</div>
+
+<% if (stores.length === 0) { %>
+<div style="background:var(--surface);border:1.5px dashed var(--border);border-radius:12px;padding:32px;text-align:center;margin-bottom:24px;color:var(--text-3);">
+  <div style="font-size:32px;margin-bottom:8px;">🟡</div>
+  <div style="font-weight:600;margin-bottom:6px;">ยังไม่ได้เชื่อมต่อร้าน Lazada</div>
+  <div style="font-size:13px;">กด "เชื่อมต่อร้านใหม่" และกรอก App Key, App Secret, Access Token</div>
+</div>
+<% } else { %>
+<div class="store-grid">
+  <% stores.forEach(store => { %>
+  <div class="store-card">
+    <div class="store-card-header">
+      <div class="store-logo">🟡</div>
+      <div>
+        <div class="store-title"><%= store.store_name %></div>
+        <div class="store-meta">App Key: <%= store.channel_id %></div>
+        <% if (store.last_sync_at) { %>
+        <div class="store-meta">ซิงค์ล่าสุด: <%= new Date(store.last_sync_at).toLocaleString('th-TH') %></div>
+        <% } %>
+      </div>
+    </div>
+    <div class="store-actions">
+      <button class="btn btn-primary btn-sm" onclick="openSyncModal('<%= store.id %>', '<%= store.store_name %>')">🔄 ซิงค์ออเดอร์</button>
+      <button class="btn btn-secondary btn-sm" onclick="openEditModal(<%= JSON.stringify(store).replace(/</g,'&lt;') %>)">แก้ไข</button>
+      <form action="/lazada/stores/<%= store.id %>?_method=DELETE" method="POST" onsubmit="return confirm('ลบร้านนี้?')" style="display:inline;">
+        <button class="btn btn-danger btn-sm">ลบ</button>
+      </form>
+    </div>
+  </div>
+  <% }) %>
+</div>
+<% } %>
+
+<!-- Orders -->
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+  <h2 style="font-size:15px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;">
+    ออเดอร์ Lazada (<%= orders.length %>)
+  </h2>
+</div>
+
+<% if (orders.length === 0) { %>
+<div style="background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:40px;text-align:center;color:var(--text-3);">
+  <div style="font-size:36px;margin-bottom:10px;">📭</div>
+  <div style="font-weight:600;">ยังไม่มีออเดอร์ — กด ซิงค์ออเดอร์ เพื่อดึงจาก Lazada</div>
+</div>
+<% } else { %>
+<div class="orders-wrap" style="overflow-x:auto;">
+  <table class="orders-table">
+    <thead>
+      <tr>
+        <th>เลขออเดอร์</th>
+        <th>ลูกค้า</th>
+        <th>สินค้า</th>
+        <th>ยอด</th>
+        <th>สถานะ</th>
+        <th>วันที่</th>
+        <th>ขนส่ง</th>
+        <th style="text-align:center;">จัดการ</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% orders.forEach(order => { %>
+      <tr>
+        <td>
+          <div style="font-weight:700;font-size:12.5px;"><%= order.order_no || order.platform_order_id %></div>
+          <div style="font-size:10px;color:var(--text-3);">#<%= order.platform_order_id %></div>
+        </td>
+        <td>
+          <div style="font-weight:600;"><%= order.customer_name %></div>
+          <div style="font-size:11px;color:var(--text-3);"><%= order.customer_phone %></div>
+        </td>
+        <td style="max-width:180px;">
+          <div style="font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+            <% const items = order.items||[]; %>
+            <%= items.length ? items.map(i=>`${i.product_name} x${i.qty}`).join(', ') : '—' %>
+          </div>
+        </td>
+        <td style="font-weight:700;white-space:nowrap;">฿<%= (parseFloat(order.total)||0).toLocaleString('th-TH',{minimumFractionDigits:0}) %></td>
+        <td>
+          <span class="badge badge-<%= order.status %>">
+            <%= {pending:'รอดำเนินการ',confirmed:'ยืนยัน',packing:'แพ็คของ',shipped:'จัดส่งแล้ว',delivered:'ส่งถึง',cancelled:'ยกเลิก',returned:'คืน'}[order.status] || order.status %>
+          </span>
+        </td>
+        <td style="font-size:11px;white-space:nowrap;color:var(--text-3);">
+          <%= order.ordered_at ? new Date(order.ordered_at).toLocaleDateString('th-TH') : '—' %>
+        </td>
+        <td style="font-size:11px;color:var(--text-3);">
+          <%= order.shipping_provider || '—' %>
+        </td>
+        <td>
+          <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;">
+            <a href="/lazada/orders/<%= order.id %>/label" target="_blank" class="btn btn-secondary btn-xs" title="ดาวน์โหลด Label จาก Lazada">🏷️ Label</a>
+            <a href="/ecommerce/orders/<%= order.id %>/label" target="_blank" class="btn btn-secondary btn-xs" title="ใบปะหน้าระบบ">🖨️ ปริ้น</a>
+          </div>
+        </td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+<% } %>
+
+<!-- Add Store Modal -->
+<div id="addStoreModal" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('active')">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">🟡 เชื่อมต่อร้าน Lazada</span>
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('addStoreModal').classList.remove('active')">✕</button>
+    </div>
+    <form action="/lazada/stores" method="POST">
+      <div class="modal-body">
+        <div style="background:rgba(15,101,255,.08);border:1px solid rgba(15,101,255,.2);border-radius:8px;padding:12px;font-size:12.5px;margin-bottom:18px;line-height:1.6;">
+          📋 รับข้อมูลได้จาก <strong>Lazada Open Platform</strong> → My Apps
+          <br>• <strong>App Key</strong> และ <strong>App Secret</strong> จาก App Detail
+          <br>• <strong>Access Token</strong> จาก OAuth Authorization
+        </div>
+        <div style="display:grid;gap:14px;">
+          <div class="form-group">
+            <label class="form-label">ชื่อร้าน *</label>
+            <input type="text" name="store_name" class="form-control" placeholder="ร้าน Lazada ของฉัน" required>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="form-group">
+              <label class="form-label">App Key *</label>
+              <input type="text" name="app_key" class="form-control" placeholder="123456" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">App Secret *</label>
+              <input type="password" name="app_secret" class="form-control" placeholder="••••••••" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Access Token *</label>
+            <input type="password" name="access_token" class="form-control" placeholder="••••••••••••••••" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Refresh Token</label>
+            <input type="text" name="refresh_token" class="form-control" placeholder="(ถ้ามี)">
+          </div>
+          <hr style="border-color:var(--border);">
+          <div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;">ข้อมูลผู้ส่ง</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="form-group">
+              <label class="form-label">ชื่อผู้ส่ง</label>
+              <input type="text" name="sender_name" class="form-control">
+            </div>
+            <div class="form-group">
+              <label class="form-label">เบอร์โทร</label>
+              <input type="text" name="sender_phone" class="form-control">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">ที่อยู่ผู้ส่ง</label>
+            <textarea name="sender_address" class="form-control" rows="2"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('addStoreModal').classList.remove('active')">ยกเลิก</button>
+        <button type="submit" class="btn btn-primary">เชื่อมต่อร้าน</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Store Modal -->
+<div id="editStoreModal" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('active')">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">แก้ไขข้อมูลร้าน Lazada</span>
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('editStoreModal').classList.remove('active')">✕</button>
+    </div>
+    <form id="editStoreForm" method="POST">
+      <input type="hidden" name="_method" value="PUT">
+      <div class="modal-body">
+        <div style="display:grid;gap:14px;">
+          <div class="form-group">
+            <label class="form-label">ชื่อร้าน</label>
+            <input type="text" name="store_name" id="edit_store_name" class="form-control" required>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="form-group">
+              <label class="form-label">App Key</label>
+              <input type="text" name="app_key" id="edit_app_key" class="form-control">
+            </div>
+            <div class="form-group">
+              <label class="form-label">App Secret</label>
+              <input type="password" name="app_secret" id="edit_app_secret" class="form-control" placeholder="••••••••">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Access Token</label>
+            <input type="password" name="access_token" id="edit_access_token" class="form-control" placeholder="••••••••">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Refresh Token</label>
+            <input type="text" name="refresh_token" id="edit_refresh_token" class="form-control">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="form-group">
+              <label class="form-label">ชื่อผู้ส่ง</label>
+              <input type="text" name="sender_name" id="edit_sender_name" class="form-control">
+            </div>
+            <div class="form-group">
+              <label class="form-label">เบอร์โทร</label>
+              <input type="text" name="sender_phone" id="edit_sender_phone" class="form-control">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">ที่อยู่ผู้ส่ง</label>
+            <textarea name="sender_address" id="edit_sender_address" class="form-control" rows="2"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('editStoreModal').classList.remove('active')">ยกเลิก</button>
+        <button type="submit" class="btn btn-primary">บันทึก</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Sync Modal -->
+<div id="syncModal" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('active')">
+  <div class="modal-box" style="max-width:380px;">
+    <div class="modal-header">
+      <span class="modal-title">🔄 ซิงค์ออเดอร์ Lazada</span>
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('syncModal').classList.remove('active')">✕</button>
+    </div>
+    <form id="syncForm" method="POST">
+      <div class="modal-body">
+        <p style="font-size:13.5px;color:var(--text-3);margin-bottom:16px;">ร้าน: <strong id="syncStoreName" style="color:var(--text)"></strong></p>
+        <div class="form-group">
+          <label class="form-label">ดึงออเดอร์ย้อนหลัง</label>
+          <select name="days" class="form-control">
+            <option value="3">3 วัน</option>
+            <option value="7" selected>7 วัน</option>
+            <option value="15">15 วัน</option>
+            <option value="30">30 วัน</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('syncModal').classList.remove('active')">ยกเลิก</button>
+        <button type="submit" class="btn btn-primary">🔄 เริ่มซิงค์</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openSyncModal(storeId, storeName) {
+  document.getElementById('syncStoreName').textContent = storeName
+  document.getElementById('syncForm').action = `/lazada/stores/${storeId}/sync`
+  document.getElementById('syncModal').classList.add('active')
+}
+function openEditModal(store) {
+  document.getElementById('editStoreForm').action = `/lazada/stores/${store.id}`
+  document.getElementById('edit_store_name').value    = store.store_name || ''
+  document.getElementById('edit_app_key').value       = store.channel_id || ''
+  document.getElementById('edit_app_secret').value    = ''
+  document.getElementById('edit_access_token').value  = ''
+  document.getElementById('edit_refresh_token').value = store.refresh_token || ''
+  document.getElementById('edit_sender_name').value   = store.sender_name || ''
+  document.getElementById('edit_sender_phone').value  = store.sender_phone || ''
+  document.getElementById('edit_sender_address').value= store.sender_address || ''
+  document.getElementById('editStoreModal').classList.add('active')
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'))
+})
+</script>
+
+<%- include('../partials/footer') %>

@@ -1,13 +1,13 @@
 const express = require('express')
 const router = express.Router()
 const { requireAuth } = require('../middleware/auth')
-const { supabase, supabaseAdmin } = require('../config/supabase')
+const { supabaseAdmin } = require('../config/supabase')
 
 router.get('/', requireAuth, async (req, res) => {
   try {
     const [{ data: products }, { data: categories }] = await Promise.all([
-      supabase.from('products').select('*, category:product_categories(name)').order('name'),
-      supabase.from('product_categories').select('*').eq('is_active', true).order('name')
+      supabaseAdmin.from('products').select('*, category:product_categories(name)').order('name'),
+      supabaseAdmin.from('product_categories').select('*').eq('is_active', true).order('name')
     ])
     res.render('products/index', {
       title: 'สินค้า', activePage: 'products',

@@ -2,7 +2,7 @@
 const express = require('express')
 const router = express.Router()
 const { requireAuth } = require('../middleware/auth')
-const { supabase, supabaseAdmin } = require('../config/supabase')
+const { supabaseAdmin } = require('../config/supabase')
 
 // ==========================================
 // ส่วนจัดการหมวดหมู่บัญชี (Categories)
@@ -11,7 +11,7 @@ const { supabase, supabaseAdmin } = require('../config/supabase')
 // GET: หน้าจัดการหมวดหมู่
 router.get('/categories', requireAuth, async (req, res) => {
   try {
-    const { data: categories } = await supabase
+    const { data: categories } = await supabaseAdmin
       .from('transaction_categories')
       .select('*')
       .order('type')
@@ -34,7 +34,7 @@ router.get('/categories', requireAuth, async (req, res) => {
 router.post('/categories', requireAuth, async (req, res) => {
   const { name, type, code } = req.body
   try {
-    const { error } = await supabaseAdmin
+    const { error } = await supabaseAdminAdmin
       .from('transaction_categories')
       .insert([{ name, type, code }])
 
@@ -51,7 +51,7 @@ router.post('/categories', requireAuth, async (req, res) => {
 // GET: หน้าฟอร์มแก้ไขหมวดหมู่
 router.get('/categories/:id/edit', requireAuth, async (req, res) => {
   try {
-    const { data: category, error } = await supabase
+    const { data: category, error } = await supabaseAdmin
       .from('transaction_categories')
       .select('*')
       .eq('id', req.params.id)
@@ -74,7 +74,7 @@ router.get('/categories/:id/edit', requireAuth, async (req, res) => {
 router.put('/categories/:id', requireAuth, async (req, res) => {
   const { name, type, code, is_active } = req.body
   try {
-    const { error } = await supabaseAdmin
+    const { error } = await supabaseAdminAdmin
       .from('transaction_categories')
       .update({
         name, 
@@ -97,7 +97,7 @@ router.put('/categories/:id', requireAuth, async (req, res) => {
 // DELETE: ลบหมวดหมู่
 router.delete('/categories/:id', requireAuth, async (req, res) => {
   try {
-    const { error } = await supabaseAdmin
+    const { error } = await supabaseAdminAdmin
       .from('transaction_categories')
       .delete()
       .eq('id', req.params.id)
@@ -121,7 +121,7 @@ router.delete('/categories/:id', requireAuth, async (req, res) => {
 router.get('/', requireAuth, async (req, res) => {
   try {
     // 1. ดึงรายการบัญชี
-    const { data: transactions, error } = await supabase
+    const { data: transactions, error } = await supabaseAdmin
       .from('transactions')
       .select('*, category:transaction_categories(name, type)')
       .order('transaction_date', { ascending: false })
@@ -129,7 +129,7 @@ router.get('/', requireAuth, async (req, res) => {
     if (error) throw error
 
     // 2. ดึงหมวดหมู่ทั้งหมด มาเตรียมไว้ให้ Popup (เพิ่มใหม่!)
-    const { data: categories } = await supabase
+    const { data: categories } = await supabaseAdmin
       .from('transaction_categories')
       .select('*')
       .eq('is_active', true)
@@ -158,7 +158,7 @@ router.get('/', requireAuth, async (req, res) => {
 // GET: หน้าฟอร์มเพิ่มรายการใหม่
 router.get('/new', requireAuth, async (req, res) => {
   try {
-    const { data: categories } = await supabase
+    const { data: categories } = await supabaseAdmin
       .from('transaction_categories')
       .select('id, name, type')
       .eq('is_active', true)
@@ -179,7 +179,7 @@ router.get('/new', requireAuth, async (req, res) => {
 router.post('/', requireAuth, async (req, res) => {
   const { type, category_id, amount, description, transaction_date } = req.body
   try {
-    const { error } = await supabaseAdmin.from('transactions').insert([{
+    const { error } = await supabaseAdminAdmin.from('transactions').insert([{
       type, 
       category_id, 
       amount: parseFloat(amount), 
@@ -202,7 +202,7 @@ router.post('/', requireAuth, async (req, res) => {
 // GET: หน้าฟอร์มแก้ไขรายการบัญชี
 router.get('/:id/edit', requireAuth, async (req, res) => {
   try {
-    const { data: transaction, error: tError } = await supabase
+    const { data: transaction, error: tError } = await supabaseAdmin
       .from('transactions')
       .select('*')
       .eq('id', req.params.id)
@@ -210,7 +210,7 @@ router.get('/:id/edit', requireAuth, async (req, res) => {
 
     if (tError) throw tError
 
-    const { data: categories } = await supabase
+    const { data: categories } = await supabaseAdmin
       .from('transaction_categories')
       .select('id, name, type')
       .eq('is_active', true)
@@ -232,7 +232,7 @@ router.get('/:id/edit', requireAuth, async (req, res) => {
 router.put('/:id', requireAuth, async (req, res) => {
   const { type, category_id, amount, description, transaction_date } = req.body
   try {
-    const { error } = await supabaseAdmin
+    const { error } = await supabaseAdminAdmin
       .from('transactions')
       .update({
         type, 
@@ -256,7 +256,7 @@ router.put('/:id', requireAuth, async (req, res) => {
 // === เพิ่มระบบลบรายการบัญชีตรงนี้ ===
 router.delete('/:id', requireAuth, async (req, res) => {
   try {
-    const { error } = await supabaseAdmin.from('transactions').delete().eq('id', req.params.id)
+    const { error } = await supabaseAdminAdmin.from('transactions').delete().eq('id', req.params.id)
     if (error) throw error
     req.flash('success', 'ลบรายการบัญชีเรียบร้อยแล้ว')
   } catch (err) {

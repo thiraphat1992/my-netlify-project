@@ -7,8 +7,8 @@ const { supabase, supabaseAdmin } = require('../config/supabase')
 router.get('/', requireAuth, async (req, res) => {
   try {
     const [{ data: employees }, { data: departments }] = await Promise.all([
-      supabase.from('employees').select('*, dept:departments(name)').order('first_name'),
-      supabase.from('departments').select('*').eq('is_active', true).order('name')
+      supabaseAdmin.from('employees').select('*, dept:departments(name)').order('first_name'),
+      supabaseAdmin.from('departments').select('*').eq('is_active', true).order('name')
     ])
     res.render('hr/index', {
       title: 'พนักงาน', activePage: 'hr',
@@ -27,7 +27,7 @@ router.get('/', requireAuth, async (req, res) => {
 
 // สร้างพนักงานใหม่ (GET)
 router.get('/employees/new', requireAuth, async (req, res) => {
-  const { data: departments } = await supabase.from('departments').select('*').eq('is_active', true).order('name')
+  const { data: departments } = await supabaseAdmin.from('departments').select('*').eq('is_active', true).order('name')
   res.render('hr/employee_form', {
     title: 'เพิ่มพนักงานใหม่', activePage: 'hr',
     employee: null, departments: departments || []
@@ -70,8 +70,8 @@ router.post('/employees', requireAuth, async (req, res) => {
 router.get('/employees/:id/edit', requireAuth, async (req, res) => {
   try {
     const [{ data: employee }, { data: departments }] = await Promise.all([
-      supabase.from('employees').select('*').eq('id', req.params.id).single(),
-      supabase.from('departments').select('*').eq('is_active', true).order('name')
+      supabaseAdmin.from('employees').select('*').eq('id', req.params.id).single(),
+      supabaseAdmin.from('departments').select('*').eq('is_active', true).order('name')
     ])
     if (!employee) return res.redirect('/hr')
     res.render('hr/employee_form', {
@@ -126,8 +126,8 @@ router.delete('/employees/:id', requireAuth, async (req, res) => {
 router.get('/payroll', requireAuth, async (req, res) => {
   try {
     const [{ data: employees }, { data: departments }] = await Promise.all([
-      supabase.from('employees').select('*, dept:departments(name)').eq('status', 'active').order('first_name'),
-      supabase.from('departments').select('*').eq('is_active', true).order('name')
+      supabaseAdmin.from('employees').select('*, dept:departments(name)').eq('status', 'active').order('first_name'),
+      supabaseAdmin.from('departments').select('*').eq('is_active', true).order('name')
     ])
     res.render('hr/index', {
       title: 'เงินเดือน', activePage: 'payroll',
@@ -148,9 +148,9 @@ router.get('/payroll', requireAuth, async (req, res) => {
 router.get('/leave', requireAuth, async (req, res) => {
   try {
     const [{ data: employees }, { data: departments }, { data: leaves }] = await Promise.all([
-      supabase.from('employees').select('id,first_name,last_name').eq('status', 'active').order('first_name'),
-      supabase.from('departments').select('*').eq('is_active', true).order('name'),
-      supabase.from('leave_requests')
+      supabaseAdmin.from('employees').select('id,first_name,last_name').eq('status', 'active').order('first_name'),
+      supabaseAdmin.from('departments').select('*').eq('is_active', true).order('name'),
+      supabaseAdmin.from('leave_requests')
         .select('*, emp:employees(first_name,last_name)')
         .order('created_at', { ascending: false })
         .limit(100)

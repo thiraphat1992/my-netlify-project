@@ -70,6 +70,9 @@ app.use('/products', require('./routes/products'))
 app.use('/customers', require('./routes/customers'))
 app.use('/reports', require('./routes/reports'))
 app.use('/ecommerce', require('./routes/ecommerce'))
+app.use('/shopee',    require('./routes/shopee'))
+app.use('/lazada',    require('./routes/lazada'))
+app.use('/settings',  require('./routes/settings'))
 
 // Root redirect
 app.get('/', (req, res) => {

@@ -9,7 +9,7 @@
   .preview-container {
     display: flex;
     justify-content: center;
-    background: #f1f5f9;
+    background: #111111;
     padding: 20px;
     border-radius: 8px;
     overflow-x: auto;
@@ -95,7 +95,7 @@
       <option value="landscape">แนวนอน (Landscape)</option>
     </select>
     
-    <button onclick="window.print()" class="btn btn-primary" style="background: #10b981; border: none;">
+    <button onclick="window.print()" class="btn btn-primary">
       🖨️ พิมพ์เอกสาร
     </button>
 
@@ -126,7 +126,7 @@
         </div>
       </div>
       <div style="text-align:right;">
-        <h2 style="font-size: 24px; font-weight: 800; color: #6366f1; margin-bottom: 10px;"><%= docTypeLabel[order.doc_type] || 'บิลเงินสด' %></h2>
+        <h2 style="font-size: 24px; font-weight: 800; color: #ea580c; margin-bottom: 10px;"><%= docTypeLabel[order.doc_type] || 'บิลเงินสด' %></h2>
         <div style="font-size: 13px; line-height: 1.6;">
           <p><b>เลขที่:</b> <span style="font-family:'Plus Jakarta Sans',sans-serif;"><%= order.doc_no %></span></p>
           <p><b>วันที่:</b> <%= new Date(order.doc_date).toLocaleDateString('th-TH', {day:'numeric', month:'short', year:'numeric'}) %></p>
@@ -220,7 +220,7 @@
         
         <div style="display:flex; justify-content:space-between; align-items:center; background: #f1f5f9; padding: 8px 10px; border-radius: 6px; margin-top: 10px;">
           <span style="font-weight:800; font-size: 15px;">ยอดสุทธิ (Total)</span>
-          <span style="font-weight:800; font-size: 18px; font-family:'Plus Jakarta Sans',sans-serif; color: #6366f1;">
+          <span style="font-weight:800; font-size: 18px; font-family:'Plus Jakarta Sans',sans-serif; color: #ea580c;">
             ฿<%= parseFloat(order.total || 0).toLocaleString('th-TH',{minimumFractionDigits:2}) %>
           </span>
         </div>

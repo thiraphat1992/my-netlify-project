@@ -1,7 +1,7 @@
 const express = require('express')
 const router = express.Router()
 const { requireAuth } = require('../middleware/auth')
-const { supabase } = require('../config/supabase')
+const { supabaseAdmin } = require('../config/supabase')
 
 router.get('/', requireAuth, async (req, res) => {
   try {
@@ -10,12 +10,12 @@ router.get('/', requireAuth, async (req, res) => {
     const endDate = `${year}-12-31`
 
     const [{ data: transactions }, { data: employees }] = await Promise.all([
-      supabase.from('transactions')
+      supabaseAdmin.from('transactions')
         .select('type, amount, transaction_date, category:transaction_categories(name, type)')
         .gte('transaction_date', startDate)
         .lte('transaction_date', endDate)
         .order('transaction_date'),
-      supabase.from('employees').select('id').eq('status', 'active')
+      supabaseAdmin.from('employees').select('id').eq('status', 'active')
     ])
 
     // คำนวณรายเดือน
