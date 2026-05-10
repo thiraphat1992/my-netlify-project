@@ -14,7 +14,7 @@ function shopeeSign(partnerId, partnerKey, apiPath, ts, accessToken, shopId) {
 }
 
 // ─── HTTP call ────────────────────────────────────────────────────────────────
-function shopeeCall(store, method, apiPath, body = null) {
+function shopeeCall(store, method, apiPath, params = null) {
   return new Promise((resolve, reject) => {
     const ts   = Math.floor(Date.now() / 1000)
     const pid  = store.channel_id
@@ -22,12 +22,24 @@ function shopeeCall(store, method, apiPath, body = null) {
     const sid  = store.shop_id
     const tok  = store.access_token
     const sign = shopeeSign(pid, pkey, apiPath, ts, tok, sid)
-    const qs   = `partner_id=${pid}&timestamp=${ts}&sign=${sign}&shop_id=${sid}&access_token=${tok}`
-    const bodyStr = body ? JSON.stringify(body) : ''
+    const baseQs = `partner_id=${pid}&timestamp=${ts}&sign=${sign}&shop_id=${sid}&access_token=${tok}`
+
+    const isGet = method.toUpperCase() === 'GET'
+    let reqPath, bodyStr = ''
+
+    if (isGet) {
+      const extraQs = params
+        ? Object.entries(params).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&')
+        : ''
+      reqPath = `${apiPath}?${baseQs}${extraQs ? '&' + extraQs : ''}`
+    } else {
+      reqPath  = `${apiPath}?${baseQs}`
+      bodyStr  = params ? JSON.stringify(params) : ''
+    }
 
     const options = {
       hostname: SHOPEE_HOST, port: 443,
-      path: `${apiPath}?${qs}`,
+      path: reqPath,
       method: method.toUpperCase(),
       headers: {
         'Content-Type': 'application/json',
@@ -239,10 +251,9 @@ router.post('/stores/:id/sync', requireAuth, async (req, res) => {
     const timeFrom = Math.floor(Date.now() / 1000) - days * 86400
     const timeTo   = Math.floor(Date.now() / 1000)
 
-    const listResp = await shopeeCall(store, 'POST', '/api/v2/order/get_order_list', {
+    const listResp = await shopeeCall(store, 'GET', '/api/v2/order/get_order_list', {
       time_range_field: 'create_time', time_from: timeFrom, time_to: timeTo,
-      page_size: 100,
-      order_status: 'READY_TO_SHIP,SHIPPED,COMPLETED,IN_CANCEL,CANCELLED'
+      page_size: 100
     })
     if (listResp.error) throw new Error(`Shopee: ${listResp.message || listResp.error}`)
 
