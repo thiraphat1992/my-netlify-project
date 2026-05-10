@@ -265,8 +265,8 @@ router.post('/stores/:id/sync', requireAuth, async (req, res) => {
     let synced = 0, skipped = 0
     for (let i = 0; i < orderSns.length; i += 50) {
       const batch = orderSns.slice(i, i + 50)
-      const detResp = await shopeeCall(store, 'POST', '/api/v2/order/get_order_detail', {
-        order_sn_list: batch,
+      const detResp = await shopeeCall(store, 'GET', '/api/v2/order/get_order_detail', {
+        order_sn_list: batch.join(','),
         response_optional_fields: 'buyer_username,item_list,recipient_address,payment_method,shipping_carrier,tracking_number,total_amount'
       })
 
