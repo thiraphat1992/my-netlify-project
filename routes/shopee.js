@@ -62,18 +62,21 @@ function shopeeCall(store, method, apiPath, params = null) {
   })
 }
 
-// ─── Doc number ───────────────────────────────────────────────────────────────
-async function generateOrderNo() {
+// ─── Doc numbers (batch) ──────────────────────────────────────────────────────
+async function generateOrderNos(count) {
   const ym = `${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}`
   const { data: seq } = await supabaseAdmin.from('doc_sequences').select('*').eq('doc_type', 'shopee_order').single()
-  let n = 1
+  let start = 1
   if (seq) {
-    n = (seq.year_month === ym ? seq.last_number : 0) + 1
-    await supabaseAdmin.from('doc_sequences').update({ last_number: n, year_month: ym, updated_at: new Date() }).eq('doc_type', 'shopee_order')
+    start = (seq.year_month === ym ? seq.last_number : 0) + 1
+    await supabaseAdmin.from('doc_sequences')
+      .update({ last_number: start + count - 1, year_month: ym, updated_at: new Date() })
+      .eq('doc_type', 'shopee_order')
   } else {
-    await supabaseAdmin.from('doc_sequences').insert({ doc_type: 'shopee_order', prefix: 'SP', last_number: 1, year_month: ym })
+    await supabaseAdmin.from('doc_sequences')
+      .insert({ doc_type: 'shopee_order', prefix: 'SP', last_number: count, year_month: ym })
   }
-  return `SP${ym}${String(n).padStart(4, '0')}`
+  return Array.from({ length: count }, (_, i) => `SP${ym}${String(start + i).padStart(4, '0')}`)
 }
 
 function mapStatus(s) {
@@ -243,7 +246,7 @@ router.delete('/stores/:id', requireAuth, async (req, res) => {
   res.redirect('/shopee')
 })
 
-// Sync orders
+// Sync orders (batch — avoids serverless timeout)
 router.post('/stores/:id/sync', requireAuth, async (req, res) => {
   try {
     const { data: store } = await supabaseAdmin.from('ecommerce_stores').select('*').eq('id', req.params.id).single()
@@ -253,52 +256,70 @@ router.post('/stores/:id/sync', requireAuth, async (req, res) => {
     const timeFrom = Math.floor(Date.now() / 1000) - days * 86400
     const timeTo   = Math.floor(Date.now() / 1000)
 
+    // 1. Get order list (limit 20 per sync to stay under 30s timeout)
     const listResp = await shopeeCall(store, 'GET', '/api/v2/order/get_order_list', {
       time_range_field: 'create_time', time_from: timeFrom, time_to: timeTo,
-      page_size: 100
+      page_size: 20
     })
     if (listResp.error) throw new Error(`Shopee: ${listResp.message || listResp.error}`)
 
     const orderSns = (listResp.response?.order_list || []).map(o => o.order_sn)
     if (!orderSns.length) { req.flash('success', 'ไม่พบออเดอร์ใหม่'); return res.redirect('/shopee') }
 
-    let synced = 0, skipped = 0
-    for (let i = 0; i < orderSns.length; i += 50) {
-      const batch = orderSns.slice(i, i + 50)
-      const detResp = await shopeeCall(store, 'GET', '/api/v2/order/get_order_detail', {
-        order_sn_list: batch.join(','),
-        response_optional_fields: 'buyer_username,item_list,recipient_address,payment_method,shipping_carrier,tracking_number,total_amount'
-      })
+    // 2. Get order details (single call for all SNs)
+    const detResp = await shopeeCall(store, 'GET', '/api/v2/order/get_order_detail', {
+      order_sn_list: orderSns.join(','),
+      response_optional_fields: 'buyer_username,item_list,recipient_address,payment_method,shipping_carrier,tracking_number,total_amount'
+    })
+    const allOrders = detResp.response?.order_list || []
 
-      for (const ord of (detResp.response?.order_list || [])) {
-        const { data: ex } = await supabaseAdmin.from('ecommerce_orders')
-          .select('id').eq('platform_order_id', ord.order_sn).eq('platform', 'shopee').maybeSingle()
-        if (ex) { skipped++; continue }
+    // 3. Batch check existing orders (1 query instead of N)
+    const { data: existing } = await supabaseAdmin.from('ecommerce_orders')
+      .select('platform_order_id').in('platform_order_id', orderSns).eq('platform', 'shopee')
+    const existingSet = new Set((existing || []).map(o => o.platform_order_id))
 
-        const addr = ord.recipient_address || {}
-        const order_no = await generateOrderNo()
-        const { data: newOrd, error: oErr } = await supabaseAdmin.from('ecommerce_orders').insert([{
-          order_no, store_id: store.id, platform: 'shopee',
-          platform_order_id: ord.order_sn,
-          status: mapStatus(ord.order_status),
-          customer_name:  addr.name  || ord.buyer_username || 'ลูกค้า Shopee',
-          customer_phone: addr.phone || '',
-          customer_address: addr.full_address || '',
-          customer_district: addr.district || '',
-          customer_province: addr.state    || '',
-          customer_postal_code: addr.zipcode || '',
-          shipping_provider: ord.shipping_carrier || 'Shopee Express',
-          tracking_no: ord.tracking_number || null,
-          subtotal:  parseFloat(ord.total_amount) || 0,
-          total:     parseFloat(ord.total_amount) || 0,
-          payment_method: (ord.payment_method || '').includes('COD') ? 'cod' : 'transfer',
-          ordered_at: ord.create_time ? new Date(ord.create_time * 1000) : new Date()
-        }]).select().single()
+    const newOrders = allOrders.filter(o => !existingSet.has(o.order_sn))
+    if (!newOrders.length) {
+      req.flash('success', `ข้าม ${existingSet.size} ออเดอร์ที่มีอยู่แล้ว — ไม่มีออเดอร์ใหม่`)
+      return res.redirect('/shopee')
+    }
 
-        if (oErr || !newOrd) { console.error('Insert shopee order:', oErr); continue }
+    // 4. Generate all order numbers at once (2 queries instead of N*2)
+    const orderNos = await generateOrderNos(newOrders.length)
 
-        const items = (ord.item_list || []).map(item => ({
-          order_id: newOrd.id,
+    // 5. Batch insert orders (1 query instead of N)
+    const ordersToInsert = newOrders.map((ord, i) => {
+      const addr = ord.recipient_address || {}
+      return {
+        order_no: orderNos[i], store_id: store.id, platform: 'shopee',
+        platform_order_id: ord.order_sn,
+        status: mapStatus(ord.order_status),
+        customer_name:     addr.name  || ord.buyer_username || 'ลูกค้า Shopee',
+        customer_phone:    addr.phone || '',
+        customer_address:  addr.full_address || '',
+        customer_district: addr.district || '',
+        customer_province: addr.state    || '',
+        customer_postal_code: addr.zipcode || '',
+        shipping_provider: ord.shipping_carrier || 'Shopee Express',
+        tracking_no:       ord.tracking_number || null,
+        subtotal:  parseFloat(ord.total_amount) || 0,
+        total:     parseFloat(ord.total_amount) || 0,
+        payment_method: (ord.payment_method || '').includes('COD') ? 'cod' : 'transfer',
+        ordered_at: ord.create_time ? new Date(ord.create_time * 1000) : new Date()
+      }
+    })
+
+    const { data: inserted, error: insertErr } = await supabaseAdmin
+      .from('ecommerce_orders').insert(ordersToInsert).select('id, platform_order_id')
+    if (insertErr) throw insertErr
+
+    // 6. Batch insert all items (1 query instead of N)
+    const allItems = []
+    for (const ins of (inserted || [])) {
+      const orig = newOrders.find(o => o.order_sn === ins.platform_order_id)
+      for (const item of (orig?.item_list || [])) {
+        allItems.push({
+          order_id: ins.id,
           platform_product_id: String(item.item_id),
           product_name: item.item_name || 'สินค้า',
           sku: item.model_sku || null,
@@ -306,14 +327,13 @@ router.post('/stores/:id/sync', requireAuth, async (req, res) => {
           qty: item.model_quantity_purchased || 1,
           unit_price: parseFloat(item.model_discounted_price) || 0,
           line_total: (parseFloat(item.model_discounted_price) || 0) * (item.model_quantity_purchased || 1)
-        }))
-        if (items.length) await supabaseAdmin.from('ecommerce_order_items').insert(items)
-        synced++
+        })
       }
     }
+    if (allItems.length) await supabaseAdmin.from('ecommerce_order_items').insert(allItems)
 
     await supabaseAdmin.from('ecommerce_stores').update({ last_sync_at: new Date() }).eq('id', store.id)
-    req.flash('success', `ซิงค์เสร็จ: นำเข้า ${synced} ออเดอร์, ข้าม ${skipped} ออเดอร์ที่มีอยู่แล้ว`)
+    req.flash('success', `ซิงค์เสร็จ: นำเข้า ${inserted?.length || 0} ออเดอร์, ข้าม ${existingSet.size} ออเดอร์ที่มีอยู่แล้ว`)
   } catch (err) {
     console.error('Shopee sync error:', err)
     req.flash('error', `ซิงค์ไม่สำเร็จ: ${err.message}`)
