@@ -169,8 +169,12 @@
         <td style="font-size:11px;white-space:nowrap;color:var(--text-3);">
           <%= order.ordered_at ? new Date(order.ordered_at).toLocaleDateString('th-TH') : '—' %>
         </td>
-        <td style="font-size:11px;color:var(--text-3);">
-          <%= order.tracking_no || '—' %>
+        <td style="font-size:11px;">
+          <% if (order.tracking_no) { %>
+          <span style="color:var(--text);font-family:monospace;"><%= order.tracking_no %></span>
+          <% } else { %>
+          <button class="btn btn-secondary btn-xs" onclick="fetchTracking('<%= order.id %>', this)">ดึง</button>
+          <% } %>
         </td>
         <td>
           <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;">
@@ -346,6 +350,20 @@
 </div>
 
 <script>
+async function fetchTracking(orderId, btn) {
+  btn.textContent = '...'
+  btn.disabled = true
+  const r = await fetch(`/shopee/orders/${orderId}/fetch-tracking`, { method: 'POST' })
+  const d = await r.json()
+  if (d.ok) {
+    btn.closest('td').innerHTML = `<span style="color:var(--text);font-family:monospace;">${d.tracking_no}</span>`
+  } else {
+    btn.textContent = 'ดึง'
+    btn.disabled = false
+    alert(d.error || 'ยังไม่มี Tracking')
+  }
+}
+
 function openSyncModal(storeId, storeName) {
   document.getElementById('syncStoreName').textContent = storeName
   document.getElementById('syncForm').action = `/shopee/stores/${storeId}/sync`

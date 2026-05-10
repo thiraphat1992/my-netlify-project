@@ -357,6 +357,26 @@ router.get('/orders/:id/label', requireAuth, async (req, res) => {
   }
 })
 
+// Fetch tracking number from Shopee API
+router.post('/orders/:id/fetch-tracking', requireAuth, async (req, res) => {
+  try {
+    const { data: order } = await supabaseAdmin.from('ecommerce_orders')
+      .select('*, store:ecommerce_stores(*)').eq('id', req.params.id).single()
+    if (!order?.store) return res.json({ ok: false, error: 'ไม่พบออเดอร์' })
+
+    const resp = await shopeeCall(order.store, 'GET', '/api/v2/logistics/get_tracking_number', {
+      order_sn: order.platform_order_id
+    })
+    const tracking_no = resp.response?.tracking_number
+    if (!tracking_no) return res.json({ ok: false, error: resp.message || 'ยังไม่มี Tracking' })
+
+    await supabaseAdmin.from('ecommerce_orders').update({ tracking_no }).eq('id', req.params.id)
+    res.json({ ok: true, tracking_no })
+  } catch (err) {
+    res.json({ ok: false, error: err.message })
+  }
+})
+
 // Update tracking number manually
 router.post('/orders/:id/tracking', requireAuth, async (req, res) => {
   const { tracking_no } = req.body
