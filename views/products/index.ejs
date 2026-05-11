@@ -12,21 +12,19 @@
 <% if (error && error.length > 0) { %><div class="alert alert-error">⚠ <%= error[0] %></div><% } %>
 
 <!-- Stats -->
-<div class="stats-grid stats-3" style="margin-bottom:20px;">
-  <div class="stat-card">
+<div class="stats-grid stats-3">
+  <div class="stat-card" style="background: var(--white); padding: 22px; border: 1px solid rgba(255,255,255,0.45);">
     <div class="stat-label">สินค้าทั้งหมด</div>
-    <div class="stat-value"><%= products.length %></div>
-    <div class="stat-sub">รายการ</div>
+    <div class="stat-value"><%= products.length %> <span style="font-size:14px;font-weight:500;color:var(--text-muted);">รายการ</span></div>
   </div>
-  <div class="stat-card">
-    <div class="stat-label">มูลค่าต้นทุนรวม</div>
-    <div class="stat-value" style="font-size:20px;">฿<%= products.reduce((s,p)=>s+(parseFloat(p.cost_price)||0)*(parseFloat(p.stock_qty)||0),0).toLocaleString('th-TH',{minimumFractionDigits:0}) %></div>
-    <div class="stat-sub">คำนวณจากสต็อก × ต้นทุน</div>
+  <div class="stat-card" style="background: var(--black); padding: 22px;">
+    <div style="color:rgba(255,255,255,0.5);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">มูลค่าต้นทุนรวม</div>
+    <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:22px;font-weight:800;color:#fff;">฿<%= products.reduce((s,p)=>s+(parseFloat(p.cost_price)||0)*(parseFloat(p.stock_qty)||0),0).toLocaleString('th-TH',{minimumFractionDigits:0}) %></div>
+    <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:4px;">คำนวณจากสต็อก × ต้นทุน</div>
   </div>
-  <div class="stat-card">
+  <div class="stat-card" style="background: var(--white); padding: 22px; border: 1px solid rgba(255,255,255,0.45);">
     <div class="stat-label">สินค้าที่ใช้งาน</div>
-    <div class="stat-value"><%= products.filter(p=>p.is_active).length %></div>
-    <div class="stat-sub">รายการ active</div>
+    <div class="stat-value" style="color:var(--success);"><%= products.filter(p=>p.is_active).length %> <span style="font-size:14px;font-weight:500;color:var(--text-muted);">active</span></div>
   </div>
 </div>
 
