@@ -3,113 +3,126 @@
 <div class="page-header">
   <div>
     <h1>Dashboard</h1>
-    <p>ภาพรวมธุรกิจประจำเดือน <%= new Date().toLocaleDateString('th-TH', {month:'long', year:'numeric'}) %></p>
+    <p>สรุปผลการดำเนินงานประจำเดือน <%= new Date().toLocaleDateString('th-TH', {month:'long', year:'numeric'}) %></p>
   </div>
-  <div class="page-header-actions">
-    <a href="/income" class="btn btn-secondary btn-sm">+ เพิ่มรายรับ-รายจ่าย</a>
-    <a href="/sales/new" class="btn btn-primary btn-sm">+ สร้างงานขาย</a>
+  <div style="display: flex; gap: 8px;">
+    <a href="/income/new" class="btn btn-secondary btn-sm">บันทึกบัญชี</a>
+    <a href="/sales/new" class="btn btn-orange btn-sm">สร้างงานขาย</a>
   </div>
 </div>
 
 <div class="stats-grid stats-4">
-  <div class="stat-card">
-    <div class="stat-icon" style="background:rgba(34,197,94,0.12);">💰</div>
-    <div class="stat-label">รายรับเดือนนี้</div>
-    <div class="stat-value" style="color:#22c55e;">฿<%= (stats.totalIncome || 0).toLocaleString('th-TH', {minimumFractionDigits:0}) %></div>
-    <div class="stat-sub">รายรับสุทธิ</div>
+  <div class="stat-card" style="background: var(--white); padding: 24px; border: 1px solid rgba(255,255,255,0.45);">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+      <div style="width: 42px; height: 42px; background: #ecfdf5; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px;">💰</div>
+      <span class="badge badge-success">Income</span>
+    </div>
+    <div class="stat-label">รายรับรวม</div>
+    <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 24px; font-weight: 800; color: var(--success);">฿<%= (stats.totalIncome || 0).toLocaleString('th-TH') %></div>
   </div>
-  <div class="stat-card">
-    <div class="stat-icon" style="background:rgba(239,68,68,0.12);">💸</div>
-    <div class="stat-label">รายจ่ายเดือนนี้</div>
-    <div class="stat-value" style="color:#ef4444;">฿<%= (stats.totalExpense || 0).toLocaleString('th-TH', {minimumFractionDigits:0}) %></div>
-    <div class="stat-sub">รายจ่ายสุทธิ</div>
+
+  <div class="stat-card" style="background: var(--white); padding: 24px; border: 1px solid rgba(255,255,255,0.45);">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+      <div style="width: 42px; height: 42px; background: #fef2f2; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px;">💸</div>
+      <span class="badge badge-danger">Expense</span>
+    </div>
+    <div class="stat-label">รายจ่ายรวม</div>
+    <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 24px; font-weight: 800; color: var(--danger);">฿<%= (stats.totalExpense || 0).toLocaleString('th-TH') %></div>
   </div>
-  <div class="stat-card">
-    <div class="stat-icon" style="background:rgba(249,115,22,0.12);">📊</div>
-    <div class="stat-label">กำไรสุทธิ</div>
-    <div class="stat-value" style="color:<%= (stats.balance||0) >= 0 ? '#f97316' : '#ef4444' %>;">฿<%= (stats.balance || 0).toLocaleString('th-TH', {minimumFractionDigits:0}) %></div>
-    <div class="stat-sub">รายรับ - รายจ่าย</div>
+
+  <div class="stat-card" style="background: var(--black); padding: 24px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+      <div style="width: 42px; height: 42px; background: rgba(249,115,22,0.15); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px;">📊</div>
+      <span class="badge badge-orange">Balance</span>
+    </div>
+    <div style="color: rgba(255,255,255,0.5); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px;">กำไรสุทธิ</div>
+    <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 24px; font-weight: 800; color: #fff;">฿<%= (stats.balance || 0).toLocaleString('th-TH') %></div>
   </div>
-  <div class="stat-card">
-    <div class="stat-icon" style="background:rgba(251,191,36,0.12);">👥</div>
-    <div class="stat-label">พนักงานทั้งหมด</div>
-    <div class="stat-value" style="color:#fbbf24;"><%= stats.totalEmployees || 0 %></div>
-    <div class="stat-sub">คน (active)</div>
+
+  <div class="stat-card" style="background: var(--white); padding: 24px; border: 1px solid rgba(255,255,255,0.45);">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+      <div style="width: 42px; height: 42px; background: #fffbeb; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px;">👥</div>
+      <span class="badge badge-warning">Staff</span>
+    </div>
+    <div class="stat-label">พนักงาน</div>
+    <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 24px; font-weight: 800; color: var(--text-main);"><%= stats.totalEmployees || 0 %> <span style="font-size: 14px; font-weight: 500; color: var(--text-muted);">คน</span></div>
   </div>
 </div>
 
-<div class="two-col-grid">
-  <!-- รายการล่าสุด -->
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
   <div class="card">
     <div class="card-header">
-      <span class="card-title">📋 รายรับ-รายจ่ายล่าสุด</span>
-      <a href="/income" class="btn btn-secondary btn-xs">ดูทั้งหมด</a>
+      <h3 class="card-title">รายการบัญชีล่าสุด</h3>
+      <a href="/income" class="btn btn-secondary btn-sm">ดูทั้งหมด</a>
     </div>
-    <% if (recentTransactions && recentTransactions.length > 0) { %>
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>วันที่</th>
-            <th>รายละเอียด</th>
-            <th>หมวดหมู่</th>
-            <th style="text-align:right;">จำนวน</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% recentTransactions.forEach(t => { %>
+    <div class="table-wrap">
+      <% if (recentTransactions && recentTransactions.length > 0) { %>
+        <table class="data-table">
+          <thead>
             <tr>
-              <td style="color:var(--text-3);font-size:12.5px;"><%= new Date(t.transaction_date).toLocaleDateString('th-TH', {day:'numeric',month:'short'}) %></td>
-              <td><%= t.description %></td>
-              <td><span class="badge <%= t.type === 'income' ? 'badge-success' : 'badge-danger' %>"><%= t.category?.name || '-' %></span></td>
-              <td style="text-align:right;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;color:<%= t.type==='income'?'#22c55e':'#ef4444' %>;">
-                <%= t.type==='income'?'+':'-' %>฿<%= parseFloat(t.amount).toLocaleString('th-TH',{minimumFractionDigits:2}) %>
-              </td>
+              <th>วันที่</th>
+              <th>รายละเอียด</th>
+              <th>หมวดหมู่</th>
+              <th style="text-align: right;">จำนวนเงิน</th>
             </tr>
-          <% }) %>
-        </tbody>
-      </table>
-    <% } else { %>
-      <div class="empty-state">
-        <div class="empty-icon">📭</div>
-        <div class="empty-title">ยังไม่มีรายการ</div>
-        <div class="empty-desc"><a href="/income" style="color:var(--primary);">+ เพิ่มรายการแรก</a></div>
-      </div>
-    <% } %>
+          </thead>
+          <tbody>
+            <% recentTransactions.forEach(t => { %>
+              <tr>
+                <td style="color: var(--text-muted); font-size: 13px;"><%= new Date(t.transaction_date).toLocaleDateString('th-TH', {day:'numeric', month:'short'}) %></td>
+                <td style="font-weight: 500;"><%= t.description %></td>
+                <td><span class="badge <%= t.type === 'income' ? 'badge-success' : 'badge-danger' %>"><%= t.category?.name || '-' %></span></td>
+                <td style="text-align: right; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; color: <%= t.type==='income'?'var(--success)':'var(--danger)' %>;">
+                  <%= t.type==='income'?'+':'-' %><%= parseFloat(t.amount).toLocaleString('th-TH', {minimumFractionDigits: 2}) %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      <% } else { %>
+        <div class="empty-state">
+          <div class="empty-icon">📭</div>
+          <div class="empty-title">ยังไม่มีรายการบันทึก</div>
+        </div>
+      <% } %>
+    </div>
   </div>
 
-  <!-- เมนูด่วน + งานขายล่าสุด -->
-  <div style="display:flex;flex-direction:column;gap:20px;">
+  <div style="display: flex; flex-direction: column; gap: 20px;">
     <div class="card">
-      <div class="card-header"><span class="card-title">⚡ เมนูด่วน</span></div>
-      <div class="card-body" style="display:flex;flex-direction:column;gap:8px;">
-        <a href="/sales/new" style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:rgba(249,115,22,0.12);border-radius:50px;text-decoration:none;color:var(--primary);font-size:13.5px;font-weight:600;border:1px solid rgba(249,115,22,0.25);transition:all 0.2s;">🧾 <span>สร้างบิลใหม่</span></a>
-        <a href="/income" style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:#1a1a1a;border-radius:50px;text-decoration:none;color:var(--text-2);font-size:13.5px;font-weight:500;border:1px solid var(--border);transition:all 0.2s;">➕ <span>เพิ่มรายรับ</span></a>
-        <a href="/income" style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:#1a1a1a;border-radius:50px;text-decoration:none;color:var(--text-2);font-size:13.5px;font-weight:500;border:1px solid var(--border);transition:all 0.2s;">➖ <span>เพิ่มรายจ่าย</span></a>
-        <a href="/hr/employees/new" style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:#1a1a1a;border-radius:50px;text-decoration:none;color:var(--text-2);font-size:13.5px;font-weight:500;border:1px solid var(--border);transition:all 0.2s;">👤 <span>เพิ่มพนักงาน</span></a>
+      <div class="card-header"><h3 class="card-title">⚡ ทางลัด</h3></div>
+      <div class="card-body" style="display: grid; gap: 10px;">
+        <a href="/sales/new" class="btn btn-primary" style="justify-content: center; border-radius: 50px;">🧾 สร้างบิลขาย</a>
+        <a href="/income/new" class="btn btn-secondary" style="justify-content: center; border-radius: 50px;">➕ บันทึกรายรับ</a>
+        <a href="/income/new" class="btn btn-secondary" style="justify-content: center; border-radius: 50px;">➖ บันทึกรายจ่าย</a>
       </div>
     </div>
 
-    <% if (recentOrders && recentOrders.length > 0) { %>
     <div class="card">
       <div class="card-header">
-        <span class="card-title">🧾 งานขายล่าสุด</span>
-        <a href="/sales" class="btn btn-secondary btn-xs">ดูทั้งหมด</a>
+        <h3 class="card-title">🧾 ออเดอร์ล่าสุด</h3>
+        <a href="/sales" class="btn btn-secondary btn-sm">ทั้งหมด</a>
       </div>
-      <div style="padding:4px 0;">
-        <% recentOrders.forEach(o => { %>
-          <div style="padding:10px 18px;border-bottom:1px solid var(--border-2);display:flex;align-items:center;justify-content:space-between;">
-            <div>
-              <div style="font-size:13px;font-weight:600;color:var(--text)"><%= o.doc_no %></div>
-              <div style="font-size:11.5px;color:var(--text-4)"><%= o.customer_name || '-' %></div>
+      <div>
+        <% if (recentOrders && recentOrders.length > 0) { %>
+          <% recentOrders.forEach(o => { %>
+            <div style="padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(0,0,0,0.05);">
+              <div>
+                <div style="font-size: 13.5px; font-weight: 600; color: var(--text-main);"><%= o.doc_no %></div>
+                <div style="font-size: 11px; color: var(--text-muted);"><%= o.customer_name || 'ลูกค้าทั่วไป' %></div>
+              </div>
+              <span class="badge <%= o.payment_status==='paid'?'badge-success':o.payment_status==='cancelled'?'badge-danger':'badge-orange' %>">
+                <%= o.payment_status==='paid'?'ชำระแล้ว':o.payment_status==='cancelled'?'ยกเลิก':'รอชำระ' %>
+              </span>
             </div>
-            <span class="badge <%= o.payment_status==='paid'?'badge-success':o.payment_status==='cancelled'?'badge-danger':'badge-warning' %>">
-              <%= o.payment_status==='paid'?'ชำระแล้ว':o.payment_status==='cancelled'?'ยกเลิก':'รอชำระ' %>
-            </span>
+          <% }) %>
+        <% } else { %>
+          <div class="empty-state" style="padding: 24px;">
+            <div class="empty-title">ไม่มีข้อมูลออเดอร์</div>
           </div>
-        <% }) %>
+        <% } %>
       </div>
     </div>
-    <% } %>
   </div>
 </div>
 

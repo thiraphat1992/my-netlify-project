@@ -4,37 +4,78 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Error — BizFlow</title>
-  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@700;800&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Plus+Jakarta+Sans:wght@700;800;900&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: 'Prompt', sans-serif;
-      display: flex; align-items: center; justify-content: center;
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background-attachment: fixed;
       min-height: 100vh;
-      background: #0d0d0d;
-      color: #f5f5f5;
-      padding: 20px;
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px; overflow: hidden;
     }
-    .error-box { text-align: center; }
+    .blob {
+      position: fixed; z-index: 0; border-radius: 50%;
+      filter: blur(80px); opacity: 0.40;
+      animation: blobFloat 20s ease-in-out infinite alternate;
+    }
+    .blob-1 { width: 480px; height: 480px; background: #f97316; top: -150px; left: -150px; }
+    .blob-2 { width: 380px; height: 380px; background: #3b82f6; bottom: -80px; right: -80px; animation-delay: -6s; }
+    .blob-3 { width: 280px; height: 280px; background: #ec4899; top: 40%; left: 54%; animation-delay: -12s; }
+    @keyframes blobFloat {
+      0%   { transform: translate(0,0) scale(1); }
+      100% { transform: translate(40px,30px) scale(1.08); }
+    }
+    .error-box {
+      position: relative; z-index: 1;
+      text-align: center;
+      background: rgba(255,255,255,0.12);
+      backdrop-filter: blur(24px);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 28px;
+      padding: 60px 64px;
+      box-shadow: 0 32px 64px rgba(0,0,0,0.20);
+    }
     .code {
       font-family: 'Plus Jakarta Sans', sans-serif;
-      font-size: 96px; font-weight: 800;
-      background: linear-gradient(135deg, #ea580c, #fbbf24);
+      font-size: 100px; font-weight: 900;
+      background: linear-gradient(135deg, #f97316, #fbbf24);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
       background-clip: text;
-      line-height: 1; letter-spacing: -2px;
+      line-height: 1; letter-spacing: -4px; margin-bottom: 16px;
     }
-    .msg { font-size: 18px; color: #a0a0a0; margin-top: 16px; }
-    a { color: #f97316; text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    .back-link { margin-top: 28px; font-size: 14px; }
+    .msg { font-size: 18px; color: rgba(255,255,255,0.80); margin-bottom: 28px; }
+    .back-link a {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.25);
+      color: #fff; text-decoration: none;
+      padding: 12px 24px; border-radius: 12px;
+      font-size: 14px; font-weight: 600;
+      transition: all 0.2s;
+    }
+    .back-link a:hover {
+      background: rgba(255,255,255,0.25);
+      transform: translateY(-2px);
+    }
   </style>
 </head>
 <body>
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
   <div class="error-box">
     <div class="code"><%= typeof code !== 'undefined' ? code : '500' %></div>
-    <div class="msg"><%= message || 'เกิดข้อผิดพลาด' %></div>
-    <p class="back-link"><a href="/dashboard">← กลับหน้าหลัก</a></p>
+    <div class="msg"><%= message || 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง' %></div>
+    <div class="back-link">
+      <a href="/dashboard">
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+        กลับหน้าหลัก
+      </a>
+    </div>
   </div>
 </body>
 </html>

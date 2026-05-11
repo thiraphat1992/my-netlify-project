@@ -1,10 +1,5 @@
 <%- include('../partials/header') %>
 
-<style>
-  .text-income { color: #22c55e; }
-  .text-expense { color: #ef4444; }
-</style>
-
 <%
   let totalIncome = 0, totalExpense = 0
   if (transactions && transactions.length > 0) {
@@ -19,55 +14,44 @@
 <div class="page-header">
   <div>
     <h1>รายรับ-รายจ่าย</h1>
-    <p>บันทึกรายการบัญชีรายรับและรายจ่ายทั้งหมด</p>
+    <p>บันทึกและจัดการรายการบัญชีทั้งหมดของธุรกิจ</p>
   </div>
-  <div class="page-header-actions">
-    <a href="/income/categories" class="btn btn-secondary btn-sm">⚙ หมวดหมู่</a>
-    <button class="btn btn-primary" onclick="openModal('addModal')">+ เพิ่มรายการ</button>
+  <div style="display: flex; gap: 8px;">
+    <a href="/income/categories" class="btn btn-secondary btn-sm">หมวดหมู่</a>
+    <button class="btn btn-orange btn-sm" onclick="openModal('addModal')">+ เพิ่มรายการ</button>
+  </div>
+</div>
+
+<div class="stats-grid stats-3">
+  <div class="stat-card" style="background: var(--white); padding: 20px; border: 1px solid rgba(255,255,255,0.45);">
+    <div class="stat-label">รายรับรวม</div>
+    <div class="stat-value" style="font-size: 22px; color: var(--success);">฿<%= totalIncome.toLocaleString('th-TH',{minimumFractionDigits:2}) %></div>
+  </div>
+  <div class="stat-card" style="background: var(--white); padding: 20px; border: 1px solid rgba(255,255,255,0.45);">
+    <div class="stat-label">รายจ่ายรวม</div>
+    <div class="stat-value" style="font-size: 22px; color: var(--danger);">฿<%= totalExpense.toLocaleString('th-TH',{minimumFractionDigits:2}) %></div>
+  </div>
+  <div class="stat-card" style="background: var(--black); padding: 20px;">
+    <div style="color: rgba(255,255,255,0.5); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px;">คงเหลือสุทธิ</div>
+    <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 22px; font-weight: 800; color: #fff;">฿<%= balance.toLocaleString('th-TH',{minimumFractionDigits:2}) %></div>
   </div>
 </div>
 
 <% if (typeof success !== 'undefined' && success.length > 0) { %><div class="alert alert-success">✓ <%= success[0] %></div><% } %>
 <% if (typeof error !== 'undefined' && error.length > 0) { %><div class="alert alert-error">⚠ <%= error[0] %></div><% } %>
 
-<!-- Summary Cards -->
-<div class="stats-grid stats-3" style="margin-bottom:20px;">
-  <div class="stat-card">
-    <div class="stat-icon" style="background:rgba(34,197,94,0.12);">📥</div>
-    <div class="stat-label">รายรับ</div>
-    <div class="stat-value" style="color:#22c55e;font-size:22px;">฿<%= totalIncome.toLocaleString('th-TH',{minimumFractionDigits:2}) %></div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-icon" style="background:rgba(239,68,68,0.12);">📤</div>
-    <div class="stat-label">รายจ่าย</div>
-    <div class="stat-value" style="color:#ef4444;font-size:22px;">฿<%= totalExpense.toLocaleString('th-TH',{minimumFractionDigits:2}) %></div>
-  </div>
-  <div class="stat-card highlight-card">
-    <div class="stat-icon" style="background:rgba(249,115,22,0.15);">💎</div>
-    <div class="stat-label">คงเหลือ</div>
-    <div class="stat-value <%= balance >= 0 ? 'text-income' : 'text-expense' %>" style="font-size:22px;">฿<%= balance.toLocaleString('th-TH',{minimumFractionDigits:2}) %></div>
-  </div>
-</div>
-
-<!-- Filter bar -->
-<div class="card" style="margin-bottom:20px;">
-  <div style="padding:14px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
-    <div style="display:flex;gap:6px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-full);padding:4px;">
-      <button class="tab-btn active" id="tab-all" onclick="filterType('all')">ทั้งหมด</button>
-      <button class="tab-btn" id="tab-income" onclick="filterType('income')">รายรับ</button>
-      <button class="tab-btn" id="tab-expense" onclick="filterType('expense')">รายจ่าย</button>
-    </div>
-    <div style="display:flex;align-items:center;gap:10px;">
-      <div class="search-wrap" style="width:240px;">
-        <span class="search-icon">🔍</span>
-        <input type="text" class="search-input" id="searchInput" placeholder="ค้นหา..." oninput="applyFilter()">
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Table -->
 <div class="card">
+  <div class="card-header">
+    <div style="display: flex; gap: 4px; background: rgba(0,0,0,0.06); padding: 4px; border-radius: 50px;">
+      <button class="btn btn-sm tab-btn active" id="tab-all" onclick="filterType('all')" style="border-radius: 50px; padding: 5px 14px;">ทั้งหมด</button>
+      <button class="btn btn-sm tab-btn btn-secondary" id="tab-income" onclick="filterType('income')" style="border-radius: 50px; padding: 5px 14px;">รายรับ</button>
+      <button class="btn btn-sm tab-btn btn-secondary" id="tab-expense" onclick="filterType('expense')" style="border-radius: 50px; padding: 5px 14px;">รายจ่าย</button>
+    </div>
+    <div class="search-wrap" style="width: 280px;">
+      <span class="search-icon">🔍</span>
+      <input type="text" class="search-input" id="searchInput" oninput="applyFilter()" placeholder="ค้นหารายการ...">
+    </div>
+  </div>
   <div class="table-wrap">
     <% if (transactions && transactions.length > 0) { %>
     <table class="data-table" id="txTable">
@@ -84,21 +68,27 @@
       <tbody>
         <% transactions.forEach(t => { %>
           <tr data-type="<%= t.type %>">
-            <td style="color:var(--text-3);font-size:12.5px;white-space:nowrap;"><%= new Date(t.transaction_date).toLocaleDateString('th-TH', {day:'numeric',month:'short',year:'2-digit'}) %></td>
-            <td><span class="badge <%= t.type === 'income' ? 'badge-success' : 'badge-danger' %>"><%= t.type === 'income' ? '▲ รายรับ' : '▼ รายจ่าย' %></span></td>
-            <td><span style="font-size:12.5px;color:var(--text-3);"><%= t.category ? t.category.name : '-' %></span></td>
+            <td style="color:var(--text-muted); font-size:13px; white-space:nowrap;">
+              <%= new Date(t.transaction_date).toLocaleDateString('th-TH', {day:'numeric', month:'short', year:'2-digit'}) %>
+            </td>
+            <td>
+              <span class="badge <%= t.type === 'income' ? 'badge-success' : 'badge-danger' %>">
+                <%= t.type === 'income' ? '▲ รายรับ' : '▼ รายจ่าย' %>
+              </span>
+            </td>
+            <td style="font-size:13px; font-weight:500;"><%= t.category ? t.category.name : '-' %></td>
             <td style="font-weight:500;"><%= t.description %></td>
-            <td class="<%= t.type === 'income' ? 'text-income' : 'text-expense' %>" style="text-align:right;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;">
+            <td style="text-align:right; font-family:'Plus Jakarta Sans',sans-serif; font-weight:700; color:<%= t.type === 'income' ? '#10b981' : '#ef4444' %>;">
               <%= t.type === 'income' ? '+' : '-' %>฿<%= Number(t.amount).toLocaleString('th-TH',{minimumFractionDigits:2}) %>
             </td>
             <td style="text-align:center;">
-              <div style="display:flex;gap:6px;justify-content:center;">
+              <div style="display:flex; gap:6px; justify-content:center;">
                 <button type="button" class="btn btn-secondary btn-xs"
                   data-id="<%= t.id %>" data-type="<%= t.type %>" data-date="<%= t.transaction_date %>"
                   data-category="<%= t.category_id %>" data-desc="<%= t.description %>" data-amount="<%= t.amount %>"
                   onclick="openEditModal(this)">แก้ไข</button>
                 <form action="/income/<%= t.id %>?_method=DELETE" method="POST" style="margin:0;" id="del_<%= t.id %>">
-                  <button type="button" class="btn btn-danger btn-xs" onclick="if(confirm('ลบรายการนี้?')) document.getElementById('del_<%= t.id %>').submit()">ลบ</button>
+                  <button type="button" class="btn btn-xs" style="color: var(--danger); padding: 4px; background: none; border: none; cursor: pointer;" onclick="if(confirm('ลบรายการนี้?')) document.getElementById('del_<%= t.id %>').submit()">🗑</button>
                 </form>
               </div>
             </td>
@@ -109,15 +99,15 @@
     <% } else { %>
     <div class="empty-state">
       <div class="empty-icon">📭</div>
-      <div class="empty-title">ยังไม่มีรายการ</div>
-      <div class="empty-desc">คลิก "+ เพิ่มรายการ" เพื่อเริ่มต้นบันทึก</div>
+      <div class="empty-title">ยังไม่มีรายการบัญชี</div>
+      <div class="empty-desc">เริ่มบันทึกรายการแรกโดยคลิก "+ เพิ่มรายการ"</div>
     </div>
     <% } %>
   </div>
 </div>
 
 <!-- Modal เพิ่มรายการ -->
-<div class="modal-overlay" id="addModal">
+<div class="modal-overlay" id="addModal" style="display:none;">
   <div class="modal-box">
     <div class="modal-header">
       <span class="modal-title">เพิ่มรายรับ-รายจ่าย</span>
@@ -126,25 +116,25 @@
     <div class="modal-body">
       <form action="/income" method="POST">
         <div class="form-group">
-          <label class="form-label">ประเภท *</label>
-          <div style="display:flex;gap:16px;">
-            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;font-weight:600;color:#22c55e;">
-              <input type="radio" name="type" value="income" required style="accent-color:#22c55e;"> รายรับ
+          <label class="form-label">ประเภทรายการ</label>
+          <div style="display: flex; gap: 16px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px;">
+              <input type="radio" name="type" value="income" required style="accent-color: var(--success);"> รายรับ
             </label>
-            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;font-weight:600;color:#ef4444;">
-              <input type="radio" name="type" value="expense" required checked style="accent-color:#ef4444;"> รายจ่าย
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px;">
+              <input type="radio" name="type" value="expense" required checked style="accent-color: var(--danger);"> รายจ่าย
             </label>
           </div>
         </div>
         <div class="form-row form-row-2">
           <div class="form-group">
-            <label class="form-label">วันที่ *</label>
+            <label class="form-label">วันที่</label>
             <input type="date" id="add_date" name="transaction_date" class="form-control" required>
           </div>
           <div class="form-group">
-            <label class="form-label">หมวดหมู่ *</label>
+            <label class="form-label">หมวดหมู่</label>
             <select name="category_id" class="form-control" required>
-              <option value="" disabled selected>-- เลือกหมวดหมู่ --</option>
+              <option value="" disabled selected>เลือกหมวดหมู่</option>
               <% categories.forEach(cat => { %>
                 <option value="<%= cat.id %>">[<%= cat.type === 'income' ? 'รับ' : 'จ่าย' %>] <%= cat.name %></option>
               <% }) %>
@@ -152,16 +142,16 @@
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">รายละเอียด *</label>
-          <input type="text" name="description" class="form-control" placeholder="รายละเอียดรายการ" required>
+          <label class="form-label">รายละเอียด</label>
+          <input type="text" name="description" class="form-control" placeholder="ระบุรายละเอียดรายการ" required>
         </div>
         <div class="form-group">
-          <label class="form-label">จำนวนเงิน (฿) *</label>
+          <label class="form-label">จำนวนเงิน (฿)</label>
           <input type="number" step="0.01" name="amount" class="form-control" placeholder="0.00" required min="0">
         </div>
         <div class="modal-footer" style="padding:0;border:none;margin-top:8px;">
           <button type="button" class="btn btn-secondary" onclick="closeModal('addModal')">ยกเลิก</button>
-          <button type="submit" class="btn btn-primary">บันทึกรายการ</button>
+          <button type="submit" class="btn btn-orange">บันทึกรายการ</button>
         </div>
       </form>
     </div>
@@ -169,7 +159,7 @@
 </div>
 
 <!-- Modal แก้ไขรายการ -->
-<div class="modal-overlay" id="editModal">
+<div class="modal-overlay" id="editModal" style="display:none;">
   <div class="modal-box">
     <div class="modal-header">
       <span class="modal-title">แก้ไขรายการบัญชี</span>
@@ -178,25 +168,24 @@
     <div class="modal-body">
       <form id="editForm" method="POST">
         <div class="form-group">
-          <label class="form-label">ประเภท *</label>
-          <div style="display:flex;gap:16px;">
-            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;font-weight:600;color:#22c55e;">
-              <input type="radio" name="type" value="income" id="editTypeIncome" style="accent-color:#22c55e;"> รายรับ
+          <label class="form-label">ประเภทรายการ</label>
+          <div style="display: flex; gap: 16px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px;">
+              <input type="radio" name="type" value="income" id="editTypeIncome" style="accent-color: var(--success);"> รายรับ
             </label>
-            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;font-weight:600;color:#ef4444;">
-              <input type="radio" name="type" value="expense" id="editTypeExpense" style="accent-color:#ef4444;"> รายจ่าย
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px;">
+              <input type="radio" name="type" value="expense" id="editTypeExpense" style="accent-color: var(--danger);"> รายจ่าย
             </label>
           </div>
         </div>
         <div class="form-row form-row-2">
           <div class="form-group">
-            <label class="form-label">วันที่ *</label>
+            <label class="form-label">วันที่</label>
             <input type="date" id="editDate" name="transaction_date" class="form-control" required>
           </div>
           <div class="form-group">
-            <label class="form-label">หมวดหมู่ *</label>
+            <label class="form-label">หมวดหมู่</label>
             <select id="editCategory" name="category_id" class="form-control" required>
-              <option value="" disabled>-- เลือกหมวดหมู่ --</option>
               <% categories.forEach(cat => { %>
                 <option value="<%= cat.id %>">[<%= cat.type === 'income' ? 'รับ' : 'จ่าย' %>] <%= cat.name %></option>
               <% }) %>
@@ -204,16 +193,16 @@
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">รายละเอียด *</label>
+          <label class="form-label">รายละเอียด</label>
           <input type="text" id="editDesc" name="description" class="form-control" required>
         </div>
         <div class="form-group">
-          <label class="form-label">จำนวนเงิน (฿) *</label>
+          <label class="form-label">จำนวนเงิน (฿)</label>
           <input type="number" step="0.01" id="editAmount" name="amount" class="form-control" required min="0">
         </div>
         <div class="modal-footer" style="padding:0;border:none;margin-top:8px;">
           <button type="button" class="btn btn-secondary" onclick="closeModal('editModal')">ยกเลิก</button>
-          <button type="submit" class="btn btn-primary">อัปเดตรายการ</button>
+          <button type="submit" class="btn btn-orange">อัปเดตรายการ</button>
         </div>
       </form>
     </div>
@@ -222,10 +211,6 @@
 
 <script>
   document.getElementById('add_date').valueAsDate = new Date()
-
-  function openModal(id) { document.getElementById(id).classList.add('active') }
-  function closeModal(id) { document.getElementById(id).classList.remove('active') }
-  window.onclick = e => { if (e.target.classList.contains('modal-overlay')) e.target.classList.remove('active') }
 
   function openEditModal(btn) {
     document.getElementById('editForm').action = '/income/' + btn.dataset.id + '?_method=PUT'
@@ -240,8 +225,13 @@
   let currentType = 'all'
   function filterType(type) {
     currentType = type
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'))
-    document.getElementById('tab-' + type).classList.add('active')
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      b.classList.remove('active', 'btn-primary')
+      b.classList.add('btn-secondary')
+    })
+    const activeBtn = document.getElementById('tab-' + type)
+    activeBtn.classList.add('active', 'btn-primary')
+    activeBtn.classList.remove('btn-secondary')
     applyFilter()
   }
 

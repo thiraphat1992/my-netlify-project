@@ -1,57 +1,50 @@
 <%- include('../partials/header') %>
 
-<div class="page-header">
-  <div>
-    <h1>งานขาย</h1>
-    <p>สร้างและจัดการเอกสารขาย บิล ใบกำกับภาษี</p>
-  </div>
-  <a href="/sales/new" class="btn btn-primary">+ สร้างงานขายใหม่</a>
-</div>
-
-<% if (success && success.length > 0) { %><div class="alert alert-success">✓ <%= success[0] %></div><% } %>
-<% if (error && error.length > 0) { %><div class="alert alert-error">⚠ <%= error[0] %></div><% } %>
-
 <%
   const docTypeLabel = { receipt: 'ใบเสร็จ', invoice: 'ใบแจ้งหนี้', delivery_note: 'ใบส่งสินค้า', billing_note: 'ใบวางบิล', po: 'ใบสั่งซื้อ' }
   const statusLabel = { pending: 'รอชำระ', paid: 'ชำระแล้ว', partial: 'ชำระบางส่วน', cancelled: 'ยกเลิก' }
-  const statusClass = { pending: 'badge-warning', paid: 'badge-success', partial: 'badge-info', cancelled: 'badge-danger' }
   const totalOrders = orders.length
   const paidOrders = orders.filter(o => o.payment_status === 'paid').length
   const totalRevenue = orders.filter(o => o.payment_status === 'paid').reduce((s, o) => s + (parseFloat(o.total) || 0), 0)
   const pendingRevenue = orders.filter(o => o.payment_status === 'pending').reduce((s, o) => s + (parseFloat(o.total) || 0), 0)
 %>
 
-<div class="stats-grid stats-4" style="margin-bottom:20px;">
-  <div class="stat-card">
+<div class="page-header">
+  <div>
+    <h1>งานขาย</h1>
+    <p>จัดการเอกสารการขาย บิล และใบกำกับภาษีทั้งหมด</p>
+  </div>
+  <a href="/sales/new" class="btn btn-orange">+ สร้างงานขายใหม่</a>
+</div>
+
+<div class="stats-grid stats-4">
+  <div class="stat-card" style="background: var(--white); padding: 20px; border: 1px solid rgba(255,255,255,0.45);">
     <div class="stat-label">เอกสารทั้งหมด</div>
-    <div class="stat-value"><%= totalOrders %></div>
-    <div class="stat-sub">รายการ</div>
+    <div class="stat-value"><%= totalOrders %> <span style="font-size: 14px; font-weight: 500; color: var(--text-muted);">รายการ</span></div>
   </div>
-  <div class="stat-card">
+  <div class="stat-card" style="background: var(--white); padding: 20px; border: 1px solid rgba(255,255,255,0.45);">
     <div class="stat-label">ชำระแล้ว</div>
-    <div class="stat-value" style="color:#22c55e;"><%= paidOrders %></div>
-    <div class="stat-sub">รายการ</div>
+    <div class="stat-value" style="color: var(--success);"><%= paidOrders %> <span style="font-size: 14px; font-weight: 500; color: var(--text-muted);">รายการ</span></div>
   </div>
-  <div class="stat-card">
+  <div class="stat-card" style="background: var(--white); padding: 20px; border: 1px solid rgba(255,255,255,0.45);">
     <div class="stat-label">ยอดรับชำระแล้ว</div>
-    <div class="stat-value" style="font-size:20px;color:#22c55e;">฿<%= totalRevenue.toLocaleString('th-TH', {minimumFractionDigits:0}) %></div>
-    <div class="stat-sub">รวมทุกเอกสาร</div>
+    <div class="stat-value" style="font-size: 20px; color: var(--success);">฿<%= totalRevenue.toLocaleString('th-TH') %></div>
   </div>
-  <div class="stat-card">
-    <div class="stat-label">รอชำระ</div>
-    <div class="stat-value" style="font-size:20px;color:#fbbf24;">฿<%= pendingRevenue.toLocaleString('th-TH', {minimumFractionDigits:0}) %></div>
-    <div class="stat-sub">ค้างรับ</div>
+  <div class="stat-card" style="background: var(--black); padding: 20px;">
+    <div style="color: rgba(255,255,255,0.5); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px;">ค้างชำระ</div>
+    <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 20px; font-weight: 800; color: var(--primary);">฿<%= pendingRevenue.toLocaleString('th-TH') %></div>
   </div>
 </div>
 
+<% if (success && success.length > 0) { %><div class="alert alert-success">✓ <%= success[0] %></div><% } %>
+<% if (error && error.length > 0) { %><div class="alert alert-error">⚠ <%= error[0] %></div><% } %>
+
 <div class="card">
   <div class="card-header">
-    <span class="card-title">รายการเอกสารทั้งหมด</span>
-    <div style="display:flex;gap:10px;align-items:center;">
-      <div class="search-wrap" style="width:260px;">
-        <span class="search-icon">🔍</span>
-        <input type="text" class="search-input" id="searchInput" placeholder="ค้นหาเลขที่, ลูกค้า..." oninput="filterTable()">
-      </div>
+    <h3 class="card-title">รายการเอกสารการขาย</h3>
+    <div class="search-wrap" style="width: 280px;">
+      <span class="search-icon">🔍</span>
+      <input type="text" class="search-input" id="searchInput" oninput="filterTable()" placeholder="ค้นหาเลขที่, ลูกค้า...">
     </div>
   </div>
   <div class="table-wrap">
@@ -65,31 +58,36 @@
           <th>ลูกค้า</th>
           <th style="text-align:right;">ยอดรวม</th>
           <th style="text-align:center;">สถานะ</th>
-          <th style="text-align:center;">จัดการ</th>
+          <th style="text-align:right;">จัดการ</th>
         </tr>
       </thead>
       <tbody>
         <% orders.forEach(o => { %>
           <tr>
-            <td style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;color:var(--primary);"><%= o.doc_no %></td>
+            <td style="font-family:'Plus Jakarta Sans',sans-serif; font-weight:700; color: var(--dark-gray);"><%= o.doc_no %></td>
             <td><span class="badge badge-gray"><%= docTypeLabel[o.doc_type] || o.doc_type %></span></td>
-            <td style="color:var(--text-3);font-size:12.5px;"><%= new Date(o.doc_date).toLocaleDateString('th-TH', {day:'numeric',month:'short',year:'2-digit'}) %></td>
-            <td><%= o.customer_name || (o.customer && o.customer.name) || '-' %></td>
-            <td style="text-align:right;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;">฿<%= (parseFloat(o.total)||0).toLocaleString('th-TH',{minimumFractionDigits:2}) %></td>
+            <td style="color:var(--text-muted); font-size:13px;"><%= new Date(o.doc_date).toLocaleDateString('th-TH', {day:'numeric', month:'short', year:'2-digit'}) %></td>
+            <td style="font-weight: 500;"><%= o.customer_name || (o.customer && o.customer.name) || '-' %></td>
+            <td style="text-align:right; font-family:'Plus Jakarta Sans',sans-serif; font-weight:700;">฿<%= (parseFloat(o.total)||0).toLocaleString('th-TH',{minimumFractionDigits:2}) %></td>
             <td style="text-align:center;">
-              <span class="badge <%= statusClass[o.payment_status] || 'badge-gray' %>"><%= statusLabel[o.payment_status] || o.payment_status %></span>
+              <%
+                let statusBadge = 'badge-orange';
+                if(o.payment_status === 'paid') statusBadge = 'badge-success';
+                if(o.payment_status === 'cancelled') statusBadge = 'badge-danger';
+              %>
+              <span class="badge <%= statusBadge %>"><%= statusLabel[o.payment_status] || o.payment_status %></span>
             </td>
-            <td style="text-align:center;">
-              <div style="display:flex;gap:6px;justify-content:center;">
-                <a href="/sales/<%= o.id %>" class="btn btn-secondary btn-xs">ดู</a>
-                <% if (o.payment_status !== 'paid') { %>
+            <td style="text-align:right;">
+              <div style="display:flex; gap:6px; justify-content: flex-end;">
+                <a href="/sales/<%= o.id %>" class="btn btn-secondary btn-xs">เปิดดู</a>
+                <% if (o.payment_status !== 'paid' && o.payment_status !== 'cancelled') { %>
                 <form action="/sales/<%= o.id %>/status?_method=PUT" method="POST" style="margin:0;">
                   <input type="hidden" name="payment_status" value="paid">
-                  <button type="submit" class="btn btn-success btn-xs">ชำระแล้ว</button>
+                  <button type="submit" class="btn btn-orange btn-xs">รับชำระ</button>
                 </form>
                 <% } %>
-                <form action="/sales/<%= o.id %>?_method=DELETE" method="POST" style="margin:0;" onsubmit="return confirm('ลบเอกสาร ' + this.dataset.no + '?')" data-no="<%= o.doc_no %>">
-                  <button type="submit" class="btn btn-danger btn-xs">ลบ</button>
+                <form action="/sales/<%= o.id %>?_method=DELETE" method="POST" style="margin:0;" id="del_<%= o.id %>">
+                  <button type="button" class="btn btn-xs" style="color: var(--danger); background: none; border: none; cursor: pointer;" onclick="if(confirm('ยืนยันการลบเอกสาร <%= o.doc_no %>?')) document.getElementById('del_<%= o.id %>').submit()">🗑</button>
                 </form>
               </div>
             </td>
@@ -101,7 +99,7 @@
     <div class="empty-state">
       <div class="empty-icon">🧾</div>
       <div class="empty-title">ยังไม่มีเอกสารงานขาย</div>
-      <div class="empty-desc"><a href="/sales/new" style="color:var(--primary);">+ สร้างงานขายรายการแรก</a></div>
+      <div class="empty-desc">เริ่มสร้างงานขายใหม่โดยคลิก "+ สร้างงานขายใหม่"</div>
     </div>
     <% } %>
   </div>
@@ -114,12 +112,6 @@
       row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none'
     })
   }
-
-  document.querySelectorAll('[onsubmit]').forEach(form => {
-    form.addEventListener('submit', function(e) {
-      if (!confirm('ยืนยันการลบเอกสาร ' + (this.dataset.no || '') + '?')) e.preventDefault()
-    }, { once: false })
-  })
 </script>
 
 <%- include('../partials/footer') %>
